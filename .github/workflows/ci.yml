@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: taskiller_test
+          POSTGRES_USER: taskiller
+          POSTGRES_PASSWORD: taskiller
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskiller -d taskiller_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TASKILLER_ENV: test
+      TASKILLER_DATABASE_URL: postgresql+psycopg://taskiller:taskiller@localhost:5432/taskiller_test
+      TASKILLER_TEST_DATABASE_URL: postgresql+psycopg://taskiller:taskiller@localhost:5432/taskiller_test
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.14"
+          version: "latest-known"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Typecheck
+        run: uv run pyright
+      - name: Migrations
+        run: uv run alembic upgrade head
+      - name: Tests
+        run: uv run pytest --cov=taskiller --cov-report=term-missing --cov-report=xml
+      - name: Export OpenAPI
+        run: PYTHONPATH=src uv run python scripts/export_openapi.py
+      - name: Build container
+        run: docker build -t taskiller-backend:ci .

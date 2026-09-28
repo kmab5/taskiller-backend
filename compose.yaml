@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: taskiller
+      POSTGRES_USER: taskiller
+      POSTGRES_PASSWORD: taskiller
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskiller -d taskiller"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - taskiller-postgres:/var/lib/postgresql/data
+
+volumes:
+  taskiller-postgres:

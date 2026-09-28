@@ -1,0 +1,1567 @@
+openapi: 3.1.1
+info:
+  title: Taskiller API
+  version: 1.0.0-planning
+  summary: API-first task execution, focus planning, sessions, and analytics.
+  description: |
+    Planning baseline for the Taskiller v1 REST API. The web frontend is one consumer;
+    mobile, desktop, CLI, and future clients use the same contract.
+servers:
+  - url: https://api.taskiller.example/api/v1
+    description: Production placeholder
+  - url: http://localhost:3000/api/v1
+    description: Local development
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: User
+  - name: Work
+  - name: Focus
+  - name: Execution
+  - name: Analytics
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered account and short-lived access token. Refresh credential is set as a Secure HttpOnly cookie.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authenticated. Refresh credential is set as a Secure HttpOnly cookie/cookie-jar credential.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '429': { $ref: '#/components/responses/Problem429' }
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: refreshAccessToken
+      description: Rotates the refresh credential and returns a new short-lived access token.
+      responses:
+        '200':
+          description: Refreshed.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Problem401' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      responses:
+        '204': { description: Current refresh session revoked and cookie cleared. }
+        '401': { $ref: '#/components/responses/Problem401' }
+  /auth/email-verification/request:
+    post:
+      tags: [Auth]
+      operationId: requestEmailVerification
+      responses:
+        '202': { description: Verification delivery queued. }
+        '429': { $ref: '#/components/responses/Problem429' }
+  /auth/email-verification/confirm:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: confirmEmailVerification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, minLength: 20 }
+      responses:
+        '204': { description: Email verified. }
+        '400': { $ref: '#/components/responses/Problem400' }
+  /auth/password-reset/request:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '202': { description: Request accepted without revealing whether the account exists. }
+        '429': { $ref: '#/components/responses/Problem429' }
+  /auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: confirmPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string, minLength: 20 }
+                newPassword: { type: string, minLength: 10, maxLength: 256 }
+      responses:
+        '204': { description: Password changed and previous refresh families revoked. }
+        '400': { $ref: '#/components/responses/Problem400' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listAuthSessions
+      responses:
+        '200':
+          description: Active/recent device refresh sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Problem401' }
+  /auth/sessions/{sessionId}:
+    delete:
+      tags: [Auth]
+      operationId: revokeAuthSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '204': { description: Device session revoked. }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /me:
+    get:
+      tags: [User]
+      operationId: getMe
+      responses:
+        '200':
+          description: Current user.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+    patch:
+      tags: [User]
+      operationId: updateMe
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                displayName: { type: [string, 'null'], maxLength: 200 }
+      responses:
+        '200':
+          description: Updated user.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '412': { $ref: '#/components/responses/Problem412' }
+    delete:
+      tags: [User]
+      operationId: requestAccountDeletion
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202': { description: Account deletion scheduled and active credentials revoked. }
+        '412': { $ref: '#/components/responses/Problem412' }
+  /me/preferences:
+    get:
+      tags: [User]
+      operationId: getPreferences
+      responses:
+        '200':
+          description: Preferences.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPreferences' }
+    patch:
+      tags: [User]
+      operationId: updatePreferences
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePreferencesRequest' }
+      responses:
+        '200':
+          description: Updated preferences.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPreferences' }
+        '412': { $ref: '#/components/responses/Problem412' }
+  /me/export-requests:
+    post:
+      tags: [User]
+      operationId: requestDataExport
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Export job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requestId, status]
+                properties:
+                  requestId: { $ref: '#/components/schemas/Uuid' }
+                  status: { const: queued }
+  /me/export-requests/{exportRequestId}:
+    get:
+      tags: [User]
+      operationId: getDataExportRequest
+      parameters:
+        - name: exportRequestId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Export request status. Ready responses include a short-lived download URL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportRequest' }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /work-types:
+    get:
+      tags: [Work]
+      operationId: listWorkTypes
+      responses:
+        '200':
+          description: Built-in plus user-defined work types.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/WorkType' }
+    post:
+      tags: [Work]
+      operationId: createWorkType
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkTypeRequest' }
+      responses:
+        '201':
+          description: Created.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkType' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /work-types/{workTypeId}:
+    parameters:
+      - name: workTypeId
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Uuid' }
+    get:
+      tags: [Work]
+      operationId: getWorkType
+      responses:
+        '200':
+          description: Work type.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkType' }
+        '404': { $ref: '#/components/responses/Problem404' }
+    patch:
+      tags: [Work]
+      operationId: updateWorkType
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWorkTypeRequest' }
+      responses:
+        '200':
+          description: Updated custom work type. System work types are immutable.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkType' }
+        '403':
+          description: Built-in/system work type cannot be edited.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '412': { $ref: '#/components/responses/Problem412' }
+    delete:
+      tags: [Work]
+      operationId: deleteWorkType
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Custom work type deleted; affected WorkItems retain overrides and lose the optional type reference according to migration policy. }
+        '403':
+          description: Built-in/system work type cannot be deleted.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '412': { $ref: '#/components/responses/Problem412' }
+  /work-items:
+    get:
+      tags: [Work]
+      operationId: listWorkItems
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: kind
+          in: query
+          schema: { $ref: '#/components/schemas/WorkItemKind' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/WorkItemStatus' }
+        - name: parentId
+          in: query
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: includeDeleted
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Work items.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItemPage' }
+    post:
+      tags: [Work]
+      operationId: createWorkItem
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkItemRequest' }
+      responses:
+        '201':
+          description: Created.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItem' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /work-items/{workItemId}:
+    parameters:
+      - $ref: '#/components/parameters/WorkItemIdPath'
+    get:
+      tags: [Work]
+      operationId: getWorkItem
+      responses:
+        '200':
+          description: Work item.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItem' }
+        '404': { $ref: '#/components/responses/Problem404' }
+    patch:
+      tags: [Work]
+      operationId: updateWorkItem
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWorkItemRequest' }
+      responses:
+        '200':
+          description: Updated.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItem' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '412': { $ref: '#/components/responses/Problem412' }
+        '422': { $ref: '#/components/responses/Problem422' }
+    delete:
+      tags: [Work]
+      operationId: deleteWorkItem
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Soft-deleted. }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '412': { $ref: '#/components/responses/Problem412' }
+  /work-items/{workItemId}/children:
+    get:
+      tags: [Work]
+      operationId: listWorkItemChildren
+      parameters:
+        - $ref: '#/components/parameters/WorkItemIdPath'
+      responses:
+        '200':
+          description: Direct children ordered by position.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/WorkItem' }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /work-items/{workItemId}/tree:
+    get:
+      tags: [Work]
+      operationId: getWorkItemTree
+      parameters:
+        - $ref: '#/components/parameters/WorkItemIdPath'
+      responses:
+        '200':
+          description: Work subtree.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItemTreeNode' }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /work-items/{workItemId}/reorder:
+    post:
+      tags: [Work]
+      operationId: reorderWorkItem
+      parameters:
+        - $ref: '#/components/parameters/WorkItemIdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                beforeId: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+                afterId: { oneOf: [{ $ref: '#/components/schemas/Uuid' }, { type: 'null' }] }
+              description: Supply at most one of beforeId or afterId; null/null moves to end.
+      responses:
+        '200':
+          description: Reordered work item.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItem' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '412': { $ref: '#/components/responses/Problem412' }
+  /projects/{projectId}/next-action:
+    get:
+      tags: [Work]
+      operationId: getProjectNextAction
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Next executable incomplete descendant or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nextAction]
+                properties:
+                  nextAction:
+                    oneOf:
+                      - $ref: '#/components/schemas/WorkItem'
+                      - type: 'null'
+        '404': { $ref: '#/components/responses/Problem404' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /focus-plan-recommendations:
+    post:
+      tags: [Focus]
+      operationId: createFocusPlanRecommendation
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRecommendationRequest' }
+      responses:
+        '201':
+          description: Persisted recommendation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPlanRecommendation' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /focus-plan-recommendations/{recommendationId}:
+    get:
+      tags: [Focus]
+      operationId: getFocusPlanRecommendation
+      parameters:
+        - name: recommendationId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Recommendation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPlanRecommendation' }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /focus-plans:
+    get:
+      tags: [Focus]
+      operationId: listFocusPlans
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: workItemId
+          in: query
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: templateOnly
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Focus Plans.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPlanPage' }
+    post:
+      tags: [Focus]
+      operationId: createFocusPlan
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFocusPlanRequest' }
+      responses:
+        '201':
+          description: Created plan.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPlan' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /focus-plans/{focusPlanId}:
+    parameters:
+      - name: focusPlanId
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Uuid' }
+    get:
+      tags: [Focus]
+      operationId: getFocusPlan
+      responses:
+        '200':
+          description: Focus Plan.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPlan' }
+        '404': { $ref: '#/components/responses/Problem404' }
+    patch:
+      tags: [Focus]
+      operationId: updateFocusPlan
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateFocusPlanRequest' }
+      responses:
+        '200':
+          description: Updated plan.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPlan' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '412': { $ref: '#/components/responses/Problem412' }
+    delete:
+      tags: [Focus]
+      operationId: deleteFocusPlan
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: Soft-deleted plan. }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '412': { $ref: '#/components/responses/Problem412' }
+  /execution-sessions:
+    get:
+      tags: [Execution]
+      operationId: listExecutionSessions
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+        - name: workItemId
+          in: query
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: state
+          in: query
+          schema: { $ref: '#/components/schemas/ExecutionSessionState' }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Sessions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutionSessionPage' }
+    post:
+      tags: [Execution]
+      operationId: startExecutionSession
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartExecutionSessionRequest' }
+      responses:
+        '201':
+          description: Session started.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutionSession' }
+        '409':
+          description: Another Session is already open or state invariant failed.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /execution-sessions/active:
+    get:
+      tags: [Execution]
+      operationId: getActiveExecutionSession
+      responses:
+        '200':
+          description: Open Session or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    oneOf:
+                      - $ref: '#/components/schemas/ExecutionSession'
+                      - type: 'null'
+  /execution-sessions/{executionSessionId}:
+    get:
+      tags: [Execution]
+      operationId: getExecutionSession
+      parameters:
+        - $ref: '#/components/parameters/ExecutionSessionIdPath'
+      responses:
+        '200':
+          description: Session.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutionSession' }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /execution-sessions/{executionSessionId}/events:
+    get:
+      tags: [Execution]
+      operationId: listExecutionSessionEvents
+      parameters:
+        - $ref: '#/components/parameters/ExecutionSessionIdPath'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Session Events.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionEventPage' }
+    post:
+      tags: [Execution]
+      operationId: appendExecutionSessionEvent
+      parameters:
+        - $ref: '#/components/parameters/ExecutionSessionIdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSessionEventRequest' }
+      responses:
+        '201':
+          description: Event accepted atomically with updated Session aggregate.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [event, session]
+                properties:
+                  event: { $ref: '#/components/schemas/SessionEvent' }
+                  session: { $ref: '#/components/schemas/ExecutionSession' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '412': { $ref: '#/components/responses/Problem412' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /execution-sessions/{executionSessionId}/review:
+    get:
+      tags: [Execution]
+      operationId: getExecutionSessionReview
+      parameters:
+        - $ref: '#/components/parameters/ExecutionSessionIdPath'
+      responses:
+        '200':
+          description: Review.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionReview' }
+        '404': { $ref: '#/components/responses/Problem404' }
+    put:
+      tags: [Execution]
+      operationId: upsertExecutionSessionReview
+      parameters:
+        - $ref: '#/components/parameters/ExecutionSessionIdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpsertSessionReviewRequest' }
+      responses:
+        '200':
+          description: Review saved.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionReview' }
+        '422': { $ref: '#/components/responses/Problem422' }
+  /analytics/summary:
+    get:
+      tags: [Analytics]
+      operationId: getAnalyticsSummary
+      parameters:
+        - $ref: '#/components/parameters/FromDateTime'
+        - $ref: '#/components/parameters/ToDateTime'
+      responses:
+        '200':
+          description: User-level summary for the requested range.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsSummary' }
+  /analytics/work-types:
+    get:
+      tags: [Analytics]
+      operationId: getWorkTypeAnalytics
+      parameters:
+        - $ref: '#/components/parameters/FromDateTime'
+        - $ref: '#/components/parameters/ToDateTime'
+      responses:
+        '200':
+          description: Aggregates grouped by work type.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/WorkTypeAnalytics' }
+  /analytics/work-items/{workItemId}:
+    get:
+      tags: [Analytics]
+      operationId: getWorkItemAnalytics
+      parameters:
+        - $ref: '#/components/parameters/WorkItemIdPath'
+        - $ref: '#/components/parameters/FromDateTime'
+        - $ref: '#/components/parameters/ToDateTime'
+      responses:
+        '200':
+          description: Analytics for item and descendants when applicable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkItemAnalytics' }
+        '404': { $ref: '#/components/responses/Problem404' }
+  /analytics/timeseries:
+    get:
+      tags: [Analytics]
+      operationId: getAnalyticsTimeseries
+      parameters:
+        - $ref: '#/components/parameters/FromDateTime'
+        - $ref: '#/components/parameters/ToDateTime'
+        - name: bucket
+          in: query
+          required: true
+          schema: { enum: [day, week] }
+      responses:
+        '200':
+          description: Time buckets suitable for user/task data plots.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsTimeseries' }
+  /analytics/focus-patterns:
+    get:
+      tags: [Analytics]
+      operationId: getFocusPatterns
+      parameters:
+        - $ref: '#/components/parameters/FromDateTime'
+        - $ref: '#/components/parameters/ToDateTime'
+      responses:
+        '200':
+          description: Descriptive personal focus-pattern statistics used by the user and recommendation engine.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FocusPatterns' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    ETag:
+      description: Quoted resource version used for optimistic concurrency, e.g. `"7"`.
+      schema: { type: string }
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated UUID/string unique to this intended mutation.
+      schema: { type: string, minLength: 8, maxLength: 200 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag/version returned by latest resource read.
+      schema: { type: string }
+    WorkItemIdPath:
+      name: workItemId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ExecutionSessionIdPath:
+      name: executionSessionId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    SessionIdPath:
+      name: sessionId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    FromDateTime:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, format: date-time }
+    ToDateTime:
+      name: to
+      in: query
+      required: true
+      schema: { type: string, format: date-time }
+  responses:
+    Problem400:
+      description: Bad request.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Problem401:
+      description: Authentication required or invalid.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Problem404:
+      description: Resource not found (also used to avoid leaking resources owned by another user).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Problem409:
+      description: State/idempotency/business conflict.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Problem412:
+      description: Resource version changed; refetch and reconcile.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Problem422:
+      description: Semantically invalid request.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Problem429:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          schema: { type: string }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code: { type: string }
+        meta: { type: object, additionalProperties: true }
+    PageMeta:
+      type: object
+      required: [hasMore, nextCursor]
+      properties:
+        hasMore: { type: boolean }
+        nextCursor: { type: [string, 'null'] }
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        password: { type: string, minLength: 10, maxLength: 256 }
+        displayName: { type: string, maxLength: 200 }
+        timezone: { type: string, maxLength: 100, default: UTC }
+        locale: { type: string, maxLength: 40, default: en }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, maxLength: 256 }
+        deviceName: { type: string, maxLength: 200 }
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken: { type: string }
+        tokenType: { const: Bearer }
+        expiresIn: { type: integer, description: Access-token lifetime in seconds. }
+        user: { $ref: '#/components/schemas/User' }
+    AuthSession:
+      type: object
+      required: [id, createdAt, expiresAt, current]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        deviceName: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: string, format: date-time }
+        current: { type: boolean }
+    User:
+      type: object
+      required: [id, email, emailVerified, createdAt, updatedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        email: { type: string, format: email }
+        displayName: { type: [string, 'null'] }
+        emailVerified: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    UserPreferences:
+      type: object
+      required: [timezone, locale, weekStartsOn, preferredStrategy, showReviewPrompt, version]
+      properties:
+        timezone: { type: string }
+        locale: { type: string }
+        weekStartsOn: { type: integer, minimum: 0, maximum: 6 }
+        preferredStrategy: { enum: [auto, continuous, structured, flexible] }
+        preferredWorkBlockMinSeconds: { type: [integer, 'null'], minimum: 60 }
+        preferredWorkBlockMaxSeconds: { type: [integer, 'null'], minimum: 60 }
+        showReviewPrompt: { type: boolean }
+        version: { type: integer, minimum: 1 }
+    UpdatePreferencesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        timezone: { type: string, maxLength: 100 }
+        locale: { type: string, maxLength: 40 }
+        weekStartsOn: { type: integer, minimum: 0, maximum: 6 }
+        preferredStrategy: { enum: [auto, continuous, structured, flexible] }
+        preferredWorkBlockMinSeconds: { type: [integer, 'null'], minimum: 60, maximum: 21600 }
+        preferredWorkBlockMaxSeconds: { type: [integer, 'null'], minimum: 60, maximum: 21600 }
+        showReviewPrompt: { type: boolean }
+    IntensityLevel:
+      enum: [low, medium, high]
+    PhysicalityLevel:
+      enum: [sedentary, light, active]
+    LearningMode:
+      enum: [none, acquisition, retrieval, practice]
+    WorkCharacteristics:
+      type: object
+      required: [cognitiveDemand, interruptionSensitivity, continuityNeed, repetitiveness, physicality, learningMode]
+      properties:
+        cognitiveDemand: { $ref: '#/components/schemas/IntensityLevel' }
+        interruptionSensitivity: { $ref: '#/components/schemas/IntensityLevel' }
+        continuityNeed: { $ref: '#/components/schemas/IntensityLevel' }
+        repetitiveness: { $ref: '#/components/schemas/IntensityLevel' }
+        physicality: { $ref: '#/components/schemas/PhysicalityLevel' }
+        learningMode: { $ref: '#/components/schemas/LearningMode' }
+    WorkType:
+      type: object
+      required: [id, slug, displayName, characteristics, system, version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        slug: { type: string }
+        displayName: { type: string }
+        description: { type: [string, 'null'] }
+        characteristics: { $ref: '#/components/schemas/WorkCharacteristics' }
+        system: { type: boolean }
+        version: { type: integer, minimum: 1 }
+    CreateWorkTypeRequest:
+      type: object
+      additionalProperties: false
+      required: [slug, displayName, characteristics]
+      properties:
+        slug: { type: string, pattern: '^[a-z0-9][a-z0-9_-]{0,63}$' }
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 1000 }
+        characteristics: { $ref: '#/components/schemas/WorkCharacteristics' }
+    UpdateWorkTypeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, 'null'], maxLength: 1000 }
+        characteristics: { $ref: '#/components/schemas/WorkCharacteristics' }
+    DataExportRequest:
+      type: object
+      required: [id, status, requestedAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { enum: [queued, processing, ready, failed, expired] }
+        requestedAt: { type: string, format: date-time }
+        readyAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        downloadUrl: { type: [string, 'null'], format: uri, description: Short-lived signed URL returned only when ready. }
+        failureCode: { type: [string, 'null'] }
+    WorkItemKind:
+      enum: [project, sprint, chore]
+    WorkItemStatus:
+      enum: [draft, ready, in_progress, completed, cancelled, archived]
+    WorkItem:
+      type: object
+      required: [id, kind, name, status, position, createdAt, updatedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/WorkItemKind' }
+        parentId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        workTypeId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/WorkItemStatus' }
+        position: { type: integer, format: int64 }
+        priority: { type: [integer, 'null'], minimum: 0, maximum: 5 }
+        estimatedEffortSeconds: { type: [integer, 'null'], minimum: 0 }
+        plannedStartAt: { type: [string, 'null'], format: date-time }
+        deadlineAt: { type: [string, 'null'], format: date-time }
+        targetStartDate: { type: [string, 'null'], format: date }
+        targetEndDate: { type: [string, 'null'], format: date }
+        characteristicOverrides:
+          oneOf:
+            - $ref: '#/components/schemas/PartialWorkCharacteristics'
+            - type: 'null'
+        effectiveCharacteristics:
+          oneOf:
+            - $ref: '#/components/schemas/WorkCharacteristics'
+            - type: 'null'
+        completedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    PartialWorkCharacteristics:
+      type: object
+      additionalProperties: false
+      properties:
+        cognitiveDemand: { $ref: '#/components/schemas/IntensityLevel' }
+        interruptionSensitivity: { $ref: '#/components/schemas/IntensityLevel' }
+        continuityNeed: { $ref: '#/components/schemas/IntensityLevel' }
+        repetitiveness: { $ref: '#/components/schemas/IntensityLevel' }
+        physicality: { $ref: '#/components/schemas/PhysicalityLevel' }
+        learningMode: { $ref: '#/components/schemas/LearningMode' }
+    CreateWorkItemRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, name]
+      properties:
+        kind: { $ref: '#/components/schemas/WorkItemKind' }
+        parentId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        workTypeId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        name: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 20000 }
+        status: { $ref: '#/components/schemas/WorkItemStatus' }
+        priority: { type: integer, minimum: 0, maximum: 5 }
+        estimatedEffortSeconds: { type: integer, minimum: 0, maximum: 31536000 }
+        plannedStartAt: { type: string, format: date-time }
+        deadlineAt: { type: string, format: date-time }
+        targetStartDate: { type: string, format: date }
+        targetEndDate: { type: string, format: date }
+        characteristicOverrides: { $ref: '#/components/schemas/PartialWorkCharacteristics' }
+    UpdateWorkItemRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        parentId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        workTypeId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        name: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 20000 }
+        status: { $ref: '#/components/schemas/WorkItemStatus' }
+        priority: { type: [integer, 'null'], minimum: 0, maximum: 5 }
+        estimatedEffortSeconds: { type: [integer, 'null'], minimum: 0, maximum: 31536000 }
+        plannedStartAt: { type: [string, 'null'], format: date-time }
+        deadlineAt: { type: [string, 'null'], format: date-time }
+        targetStartDate: { type: [string, 'null'], format: date }
+        targetEndDate: { type: [string, 'null'], format: date }
+        characteristicOverrides:
+          oneOf:
+            - $ref: '#/components/schemas/PartialWorkCharacteristics'
+            - type: 'null'
+    WorkItemPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WorkItem' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    WorkItemTreeNode:
+      allOf:
+        - $ref: '#/components/schemas/WorkItem'
+        - type: object
+          required: [children]
+          properties:
+            children:
+              type: array
+              items: { $ref: '#/components/schemas/WorkItemTreeNode' }
+    FocusSegmentKind:
+      enum: [work, break, long_break, retrieval, review, planning, transition]
+    DurationMode:
+      enum: [fixed, flexible, open]
+    FocusPlanSegmentInput:
+      type: object
+      additionalProperties: false
+      required: [kind, durationMode, optional]
+      properties:
+        kind: { $ref: '#/components/schemas/FocusSegmentKind' }
+        durationMode: { $ref: '#/components/schemas/DurationMode' }
+        targetSeconds: { type: [integer, 'null'], minimum: 1, maximum: 86400 }
+        minSeconds: { type: [integer, 'null'], minimum: 0, maximum: 86400 }
+        maxSeconds: { type: [integer, 'null'], minimum: 1, maximum: 86400 }
+        linkedWorkItemId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        optional: { type: boolean }
+        label: { type: [string, 'null'], maxLength: 300 }
+        instructions: { type: [string, 'null'], maxLength: 4000 }
+    FocusPlanSegment:
+      allOf:
+        - $ref: '#/components/schemas/FocusPlanSegmentInput'
+        - type: object
+          required: [id, index]
+          properties:
+            id: { $ref: '#/components/schemas/Uuid' }
+            index: { type: integer, minimum: 0 }
+    FocusPlanSnapshot:
+      type: object
+      required: [segments]
+      properties:
+        strategy: { type: string }
+        segments:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/FocusPlanSegmentInput' }
+    RecommendationReason:
+      type: object
+      required: [code, label, message]
+      properties:
+        code: { type: string }
+        label:
+          enum: [evidence_backed_general, evidence_mixed, product_heuristic, personal_pattern, user_preference]
+        message: { type: string }
+    CreateRecommendationRequest:
+      type: object
+      additionalProperties: false
+      required: [workItemId]
+      properties:
+        workItemId: { $ref: '#/components/schemas/Uuid' }
+        availableTimeSeconds: { type: integer, minimum: 300, maximum: 43200 }
+        preferredStrategy: { enum: [auto, continuous, structured, flexible] }
+    FocusPlanRecommendation:
+      type: object
+      required: [id, workItemId, engineVersion, provenance, plan, reasons, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        workItemId: { $ref: '#/components/schemas/Uuid' }
+        engineVersion: { type: string }
+        provenance: { enum: [bootstrap, preference_informed, history_informed] }
+        plan: { $ref: '#/components/schemas/FocusPlanSnapshot' }
+        reasons:
+          type: array
+          items: { $ref: '#/components/schemas/RecommendationReason' }
+        createdAt: { type: string, format: date-time }
+    CreateFocusPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [name, source, segments]
+      properties:
+        workItemId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        recommendationId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        source: { enum: [manual, recommendation, template] }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        template: { type: boolean, default: false }
+        segments:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/FocusPlanSegmentInput' }
+    UpdateFocusPlanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        template: { type: boolean }
+        segments:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/FocusPlanSegmentInput' }
+    FocusPlan:
+      type: object
+      required: [id, source, name, template, segments, createdAt, updatedAt, version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        workItemId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        recommendationId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        source: { enum: [manual, recommendation, template] }
+        name: { type: string }
+        template: { type: boolean }
+        segments:
+          type: array
+          items: { $ref: '#/components/schemas/FocusPlanSegment' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 1 }
+    FocusPlanPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/FocusPlan' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    ExecutionSessionState:
+      enum: [running, paused, completed, abandoned]
+    StartExecutionSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [workItemId, focusPlanId]
+      properties:
+        workItemId: { $ref: '#/components/schemas/Uuid' }
+        focusPlanId: { $ref: '#/components/schemas/Uuid' }
+        recommendationId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    ExecutionSession:
+      type: object
+      required: [id, workItemId, focusPlanId, state, currentSegmentIndex, sessionStartedAt, planSnapshot, version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        workItemId: { $ref: '#/components/schemas/Uuid' }
+        focusPlanId: { $ref: '#/components/schemas/Uuid' }
+        recommendationId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        state: { $ref: '#/components/schemas/ExecutionSessionState' }
+        currentSegmentIndex: { type: integer, minimum: 0 }
+        sessionStartedAt: { type: string, format: date-time }
+        currentSegmentStartedAt: { type: [string, 'null'], format: date-time }
+        pausedAt: { type: [string, 'null'], format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        planSnapshot: { $ref: '#/components/schemas/FocusPlanSnapshot' }
+        version: { type: integer, minimum: 1 }
+    ExecutionSessionPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ExecutionSession' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    SessionEventType:
+      enum:
+        - session_started
+        - paused
+        - resumed
+        - segment_started
+        - segment_completed
+        - segment_skipped
+        - break_started
+        - break_ended
+        - work_item_completed
+        - session_completed
+        - session_abandoned
+    CreateSessionEventRequest:
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type: { $ref: '#/components/schemas/SessionEventType' }
+        segmentIndex: { type: integer, minimum: 0 }
+        clientOccurredAt: { type: string, format: date-time, description: Informational client time; server time remains authoritative. }
+        payload: { type: object, additionalProperties: true }
+    SessionEvent:
+      type: object
+      required: [id, sessionId, type, occurredAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        sessionId: { $ref: '#/components/schemas/Uuid' }
+        type: { $ref: '#/components/schemas/SessionEventType' }
+        occurredAt: { type: string, format: date-time }
+        clientOccurredAt: { type: [string, 'null'], format: date-time }
+        segmentIndex: { type: [integer, 'null'], minimum: 0 }
+        payload: { type: object, additionalProperties: true }
+    SessionEventPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SessionEvent' }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    UpsertSessionReviewRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        focusScore: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        fatigueScore: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        difficultyScore: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        satisfactionScore: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        note: { type: [string, 'null'], maxLength: 4000 }
+    SessionReview:
+      allOf:
+        - $ref: '#/components/schemas/UpsertSessionReviewRequest'
+        - type: object
+          required: [sessionId, createdAt, updatedAt, version]
+          properties:
+            sessionId: { $ref: '#/components/schemas/Uuid' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { type: integer, minimum: 1 }
+    AnalyticsSummary:
+      type: object
+      required: [from, to, activeWorkSeconds, breakSeconds, pausedSeconds, sessionsCompleted, sessionsAbandoned, choresCompleted]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        activeWorkSeconds: { type: integer, minimum: 0 }
+        breakSeconds: { type: integer, minimum: 0 }
+        pausedSeconds: { type: integer, minimum: 0 }
+        sessionsCompleted: { type: integer, minimum: 0 }
+        sessionsAbandoned: { type: integer, minimum: 0 }
+        choresCompleted: { type: integer, minimum: 0 }
+        medianUninterruptedWorkSeconds: { type: [integer, 'null'], minimum: 0 }
+        medianEstimateErrorSeconds: { type: [integer, 'null'] }
+        medianStartDelaySeconds: { type: [integer, 'null'], minimum: 0 }
+    WorkTypeAnalytics:
+      type: object
+      required: [workTypeId, activeWorkSeconds, sessionCount]
+      properties:
+        workTypeId:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        activeWorkSeconds: { type: integer, minimum: 0 }
+        sessionCount: { type: integer, minimum: 0 }
+        medianUninterruptedWorkSeconds: { type: [integer, 'null'], minimum: 0 }
+        medianEstimateErrorSeconds: { type: [integer, 'null'] }
+        completionRate: { type: [number, 'null'], minimum: 0, maximum: 1 }
+    WorkItemAnalytics:
+      type: object
+      required: [workItemId, activeWorkSeconds, breakSeconds, pausedSeconds, sessionCount]
+      properties:
+        workItemId: { $ref: '#/components/schemas/Uuid' }
+        activeWorkSeconds: { type: integer, minimum: 0 }
+        breakSeconds: { type: integer, minimum: 0 }
+        pausedSeconds: { type: integer, minimum: 0 }
+        sessionCount: { type: integer, minimum: 0 }
+        estimateErrorSeconds: { type: [integer, 'null'] }
+        requiredSegmentsCompleted: { type: integer, minimum: 0 }
+        requiredSegmentsPlanned: { type: integer, minimum: 0 }
+        firstStartedAt: { type: [string, 'null'], format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+    AnalyticsTimeseriesPoint:
+      type: object
+      required: [bucketStart, activeWorkSeconds, breakSeconds, pausedSeconds, sessionsCompleted, choresCompleted]
+      properties:
+        bucketStart: { type: string, format: date-time }
+        activeWorkSeconds: { type: integer, minimum: 0 }
+        breakSeconds: { type: integer, minimum: 0 }
+        pausedSeconds: { type: integer, minimum: 0 }
+        sessionsCompleted: { type: integer, minimum: 0 }
+        choresCompleted: { type: integer, minimum: 0 }
+    AnalyticsTimeseries:
+      type: object
+      required: [from, to, bucket, points]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        bucket: { enum: [day, week] }
+        points:
+          type: array
+          items: { $ref: '#/components/schemas/AnalyticsTimeseriesPoint' }
+    FocusPatternItem:
+      type: object
+      required: [workTypeSlug, sampleSize]
+      properties:
+        workTypeSlug: { type: string }
+        sampleSize: { type: integer, minimum: 0 }
+        medianUninterruptedWorkSeconds: { type: [integer, 'null'], minimum: 0 }
+        p25UninterruptedWorkSeconds: { type: [integer, 'null'], minimum: 0 }
+        p75UninterruptedWorkSeconds: { type: [integer, 'null'], minimum: 0 }
+        medianFocusScore: { type: [number, 'null'], minimum: 1, maximum: 5 }
+        recommendationPersonalizationEligible: { type: boolean }
+    FocusPatterns:
+      type: object
+      required: [from, to, items]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/FocusPatternItem' }
