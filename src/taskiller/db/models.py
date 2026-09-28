@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -8,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     SmallInteger,
     String,
     Text,
@@ -39,10 +42,10 @@ class User(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
-    preferences: Mapped["UserPreferences"] = relationship(
+    preferences: Mapped[UserPreferences] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False
     )
-    auth_sessions: Mapped[list["AuthSession"]] = relationship(
+    auth_sessions: Mapped[list[AuthSession]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -106,7 +109,7 @@ class AuthSession(Base):
     revocation_reason: Mapped[str | None] = mapped_column(String(80))
 
     user: Mapped[User] = relationship(back_populates="auth_sessions")
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         back_populates="session",
         cascade="all, delete-orphan",
         foreign_keys="RefreshToken.session_id",
@@ -171,3 +174,22 @@ class PasswordResetToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class IdempotencyRecord(Base):
+    __tablename__ = "idempotency_records"
+    __table_args__ = (
+        Index("ix_idempotency_records_expiry", "expires_at"),
+    )
+
+    owner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    scope: Mapped[str] = mapped_column(String(160), primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_status: Mapped[int | None] = mapped_column(Integer)
+    response_body_json: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    resource_id: Mapped[UUID | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

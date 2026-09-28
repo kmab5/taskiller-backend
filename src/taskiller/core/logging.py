@@ -2,13 +2,13 @@ import json
 import logging
 import logging.config
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 
 
 class JsonFormatter(logging.Formatter):
     """Small JSON formatter with no third-party runtime dependency."""
 
-    _reserved = {
+    _reserved: ClassVar[set[str]] = {
         "args",
         "asctime",
         "created",

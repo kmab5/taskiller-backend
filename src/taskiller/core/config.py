@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import StrEnum
 from functools import lru_cache
 
@@ -37,6 +39,7 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = Field(default=30, ge=1, le=365)
     email_verification_ttl_minutes: int = Field(default=60, ge=5, le=1440)
     password_reset_ttl_minutes: int = Field(default=30, ge=5, le=1440)
+    idempotency_ttl_hours: int = Field(default=24, ge=1, le=168)
 
     refresh_cookie_domain: str | None = None
     refresh_cookie_samesite: str = "lax"
@@ -53,7 +56,7 @@ class Settings(BaseSettings):
         return self.env in {Environment.STAGING, Environment.PRODUCTION}
 
     @model_validator(mode="after")
-    def validate_security_settings(self) -> "Settings":
+    def validate_security_settings(self) -> Settings:
         if self.refresh_cookie_samesite not in {"lax", "strict", "none"}:
             raise ValueError("refresh_cookie_samesite must be lax, strict, or none")
         if self.refresh_cookie_samesite == "none" and not self.cookie_secure:

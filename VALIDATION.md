@@ -1,37 +1,53 @@
-# Round 2 Validation
+# Round 3 Validation
 
 Validated on 2026-09-28 in the artifact environment.
 
+## Reported CI lint fixes
+
+The Round 2 Ruff failures supplied before this round were corrected before Work-domain implementation:
+
+- import organization in `alembic/env.py`, `auth/routes.py` and `users/schemas.py`
+- unnecessary quoted annotations in settings, ORM models and user schemas
+- `JsonFormatter._reserved` marked as `ClassVar[set[str]]`
+
+New Round 3 source follows the same 100-character Ruff configuration. Ruff itself is not installed in this offline artifact runtime, so a successful local Ruff execution is not claimed; CI remains authoritative for Ruff and Pyright.
+
 ## Passed locally
 
-- `pytest -m "not integration"`: **15 passed**
-- full `pytest`: **15 passed, 8 skipped**
-  - the eight skipped tests require `TASKILLER_TEST_DATABASE_URL`
-- `python -m compileall src tests alembic`: passed
-- import walk across the `taskiller` package: passed
-- SQLAlchemy `configure_mappers()`: passed, **6 mapped tables**
-- generated FastAPI OpenAPI document: passed, written to `openapi/current.json`
-- Alembic offline `upgrade head --sql`: passed
-- Alembic offline downgrade `20260928_0001:base --sql`: passed
+- `pytest tests/unit -q`: **26 passed**
+- full `pytest -q`: **26 passed, 14 skipped**
+  - the fourteen skipped tests require `TASKILLER_TEST_DATABASE_URL`
+- `python -m compileall src tests alembic scripts`: passed
+- SQLAlchemy `configure_mappers()`: passed, **9 mapped tables**
+- FastAPI application/OpenAPI construction: passed
+- generated OpenAPI 3.1 document: **23 paths / 31 operations**
+- OpenAPI export written to `openapi/current.json`
+- Alembic offline `upgrade head --sql`: passed, including Round 3 tables, seeds and hierarchy trigger
+- Alembic offline downgrade `20260928_0002:base --sql`: passed
 - source/test/migration 100-character line-length scan: passed
 
-## PostgreSQL integration coverage included
+## PostgreSQL coverage included
 
-CI provisions PostgreSQL 18, applies Alembic migrations, and then runs the complete test suite. The Round 2 integration suite covers:
+CI provisions PostgreSQL 18, upgrades to Alembic `head`, and executes the integration suite. Round 3 adds coverage for:
 
-- registration and refresh-cookie issuance
-- profile ETag/If-Match behavior
-- email verification
-- refresh rotation and old-token replay revocation
-- password reset, password replacement and session revocation
-- per-device session listing/revocation
-- preferences optimistic concurrency
-- proof that plaintext refresh credentials are not persisted
-- non-disclosing password-reset requests for unknown email addresses
-- readiness against PostgreSQL
+- built-in WorkType visibility
+- custom WorkType idempotent creation, update and deletion
+- immutable system WorkTypes
+- Project -> Sprint -> Chore and Project -> Chore hierarchy rules
+- direct database rejection of an invalid orphan Sprint, proving trigger enforcement
+- tree traversal and Project next-action selection
+- terminal Project next-action behavior
+- WorkItem state transitions and completion timestamp handling
+- soft deletion and parent deletion guards
+- sibling reordering and idempotent replay
+- idempotency-key request mismatch rejection
+- stable cursor pagination
+- `ON DELETE SET NULL` when a custom WorkType is removed
+
+The existing Round 2 authentication/readiness integration tests remain in the suite and were adjusted so cleanup does not erase globally seeded WorkTypes.
 
 ## Environment limitations
 
-This artifact runtime has Python 3.13 rather than the project target Python 3.14 and has no PostgreSQL server/psycopg installation. Network access is disabled, so the missing project dependencies, Ruff and Pyright could not be installed here. The source includes a local Argon2 fallback solely so dependency-independent unit tests can execute; normal project installation uses `pwdlib[argon2]` as declared in `pyproject.toml`.
+This artifact runtime has Python 3.13 rather than the project target Python 3.14 and does not contain PostgreSQL, psycopg, Ruff or Pyright. Network access is disabled, so those missing tools cannot be installed here.
 
-Accordingly, PostgreSQL integration, Ruff and Pyright are **not claimed as locally executed**. `.github/workflows/ci.yml` runs Python 3.14, installs the declared dependencies, runs Ruff/Pyright, migrates PostgreSQL, runs the full suite, exports OpenAPI and builds the container.
+Accordingly, the PostgreSQL integration tests, Ruff and Pyright are **not claimed as locally executed**. `.github/workflows/ci.yml` uses Python 3.14, installs the declared dependencies, runs Ruff and Pyright, provisions PostgreSQL 18, applies migrations, runs the complete suite, exports OpenAPI and builds the container.

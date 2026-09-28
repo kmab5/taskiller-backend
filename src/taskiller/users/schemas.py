@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, model_validator, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from taskiller.api.models import ApiModel
 
@@ -87,7 +89,7 @@ class UpdatePreferencesRequest(ApiModel):
         return value
 
     @model_validator(mode="after")
-    def validate_block_range(self) -> "UpdatePreferencesRequest":
+    def validate_block_range(self) -> UpdatePreferencesRequest:
         if (
             self.preferred_work_block_min_seconds is not None
             and self.preferred_work_block_max_seconds is not None

@@ -26,9 +26,10 @@ def clean_database() -> None:
         connection.execute(
             text(
                 "TRUNCATE TABLE password_reset_tokens, email_verification_tokens, "
-                "refresh_tokens, auth_sessions, user_preferences, users CASCADE"
+                "refresh_tokens, auth_sessions, user_preferences"
             )
         )
+        connection.execute(text("DELETE FROM users"))
     engine.dispose()
 
 

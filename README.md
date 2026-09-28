@@ -4,7 +4,7 @@ Client-independent backend for **Taskiller** — a task execution and focus syst
 
 ## Status
 
-**Round 2 complete: Identity & Authentication.**
+**Round 3 complete: Work Model.**
 
 Implemented so far:
 
@@ -22,14 +22,22 @@ Implemented so far:
 - session listing/revocation and logout-all
 - RFC-style structured API errors
 - ETag/If-Match optimistic concurrency for user-owned mutable resources
+- built-in and custom Work Types with work-characteristic profiles
+- Project/Sprint/Chore CRUD with bounded hierarchy rules
+- PostgreSQL-backed hierarchy enforcement
+- WorkItem state machine, ordering, soft deletion, trees and next-action selection
+- database-backed idempotency for create/reorder mutations
+- cursor pagination and ownership-safe Work queries
 
-Round 3 will add the Work domain: Work Types, Projects, Sprints, Chores, hierarchy/state invariants, ordering and next-action queries.
+Round 4 will add Focus Plans and the deterministic evidence-informed recommendation engine.
 
 See:
 
 - `docs/ARCHITECTURE.md`
 - `docs/AUTH.md`
 - `docs/ROUND_2.md`
+- `docs/ROUND_3.md`
+- `docs/WORK.md`
 - `docs/DEVELOPMENT_ROUNDS.md`
 - `openapi/current.json` — OpenAPI generated from the implemented application
 - `openapi/planned-v1.yaml` — full v1 planning baseline

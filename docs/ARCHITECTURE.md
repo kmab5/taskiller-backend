@@ -19,7 +19,7 @@ Taskiller is a **modular monolith** with a client-independent REST API. The web 
 - GitHub Actions
 - Koyeb for the API
 
-## Modules to implement
+## Domain modules
 
 ```text
 Identity/Auth
@@ -44,3 +44,9 @@ The Python application owns both Taskiller identity/session state and domain sta
 - No Redis or microservices are introduced for v1 correctness.
 - Active timers are state/timestamps in PostgreSQL, never in-memory countdowns.
 - Idempotency and optimistic concurrency are required for cross-device mutations.
+
+## Implemented through Round 3
+
+Identity/Auth and Work are production-shaped modules. Work owns WorkTypes and WorkItems; the shared core currently provides configuration, structured problems and mutation idempotency. PostgreSQL is the source of truth for ownership, hierarchy, ordering and version state.
+
+Round 4 adds Focus and Recommendations without changing the Work API's containment semantics.

@@ -104,6 +104,188 @@
         "title": "AuthSessionsResponse",
         "type": "object"
       },
+      "CreateWorkItemRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristicOverrides": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialWorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deadlineAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadlineat"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "estimatedEffortSeconds": {
+            "anyOf": [
+              {
+                "maximum": 31536000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimatedeffortseconds"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WorkItemKind"
+          },
+          "name": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentid"
+          },
+          "plannedStartAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plannedstartat"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkItemStatus",
+            "default": "draft"
+          },
+          "targetEndDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetenddate"
+          },
+          "targetStartDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetstartdate"
+          },
+          "workTypeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeid"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ],
+        "title": "CreateWorkItemRequest",
+        "type": "object"
+      },
+      "CreateWorkTypeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristics": {
+            "$ref": "#/components/schemas/WorkCharacteristics"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "displayName": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "slug": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "displayName",
+          "characteristics"
+        ],
+        "title": "CreateWorkTypeRequest",
+        "type": "object"
+      },
       "EmailVerificationConfirmRequest": {
         "additionalProperties": false,
         "properties": {
@@ -145,6 +327,25 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "IntensityLevel": {
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "title": "IntensityLevel",
+        "type": "string"
+      },
+      "LearningMode": {
+        "enum": [
+          "none",
+          "acquisition",
+          "retrieval",
+          "practice"
+        ],
+        "title": "LearningMode",
+        "type": "string"
+      },
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -177,6 +378,99 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "PageMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "hasMore": {
+            "title": "Hasmore",
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "hasMore",
+          "nextCursor"
+        ],
+        "title": "PageMeta",
+        "type": "object"
+      },
+      "PartialWorkCharacteristics": {
+        "additionalProperties": false,
+        "properties": {
+          "cognitiveDemand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntensityLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "continuityNeed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntensityLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interruptionSensitivity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntensityLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learningMode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LearningMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "physicality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhysicalityLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repetitiveness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntensityLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "PartialWorkCharacteristics",
         "type": "object"
       },
       "PasswordResetConfirmRequest": {
@@ -217,6 +511,15 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PhysicalityLevel": {
+        "enum": [
+          "sedentary",
+          "light",
+          "active"
+        ],
+        "title": "PhysicalityLevel",
+        "type": "string"
+      },
       "PreferredStrategy": {
         "enum": [
           "auto",
@@ -226,6 +529,26 @@
         ],
         "title": "PreferredStrategy",
         "type": "string"
+      },
+      "ProjectNextActionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "nextAction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkItemResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "nextAction"
+        ],
+        "title": "ProjectNextActionResponse",
+        "type": "object"
       },
       "ReadinessResponse": {
         "properties": {
@@ -297,6 +620,37 @@
           "password"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "ReorderWorkItemRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "afterId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Afterid"
+          },
+          "beforeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beforeid"
+          }
+        },
+        "title": "ReorderWorkItemRequest",
         "type": "object"
       },
       "UpdatePreferencesRequest": {
@@ -407,6 +761,198 @@
           }
         },
         "title": "UpdateUserRequest",
+        "type": "object"
+      },
+      "UpdateWorkItemRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristicOverrides": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialWorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deadlineAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadlineat"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "estimatedEffortSeconds": {
+            "anyOf": [
+              {
+                "maximum": 31536000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimatedeffortseconds"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentid"
+          },
+          "plannedStartAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plannedstartat"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkItemStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetEndDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetenddate"
+          },
+          "targetStartDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetstartdate"
+          },
+          "workTypeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeid"
+          }
+        },
+        "title": "UpdateWorkItemRequest",
+        "type": "object"
+      },
+      "UpdateWorkTypeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          }
+        },
+        "title": "UpdateWorkTypeRequest",
         "type": "object"
       },
       "UserPreferencesResponse": {
@@ -564,6 +1110,598 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WorkCharacteristics": {
+        "additionalProperties": false,
+        "properties": {
+          "cognitiveDemand": {
+            "$ref": "#/components/schemas/IntensityLevel"
+          },
+          "continuityNeed": {
+            "$ref": "#/components/schemas/IntensityLevel"
+          },
+          "interruptionSensitivity": {
+            "$ref": "#/components/schemas/IntensityLevel"
+          },
+          "learningMode": {
+            "$ref": "#/components/schemas/LearningMode"
+          },
+          "physicality": {
+            "$ref": "#/components/schemas/PhysicalityLevel"
+          },
+          "repetitiveness": {
+            "$ref": "#/components/schemas/IntensityLevel"
+          }
+        },
+        "required": [
+          "cognitiveDemand",
+          "interruptionSensitivity",
+          "continuityNeed",
+          "repetitiveness",
+          "physicality",
+          "learningMode"
+        ],
+        "title": "WorkCharacteristics",
+        "type": "object"
+      },
+      "WorkItemChildrenResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WorkItemChildrenResponse",
+        "type": "object"
+      },
+      "WorkItemKind": {
+        "enum": [
+          "project",
+          "sprint",
+          "chore"
+        ],
+        "title": "WorkItemKind",
+        "type": "string"
+      },
+      "WorkItemPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "WorkItemPage",
+        "type": "object"
+      },
+      "WorkItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristicOverrides": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialWorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completedat"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "deadlineAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadlineat"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "effectiveCharacteristics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimatedEffortSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimatedeffortseconds"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WorkItemKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentid"
+          },
+          "plannedStartAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plannedstartat"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkItemStatus"
+          },
+          "targetEndDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetenddate"
+          },
+          "targetStartDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetstartdate"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "workTypeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeid"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "parentId",
+          "workTypeId",
+          "name",
+          "description",
+          "status",
+          "position",
+          "priority",
+          "estimatedEffortSeconds",
+          "plannedStartAt",
+          "deadlineAt",
+          "targetStartDate",
+          "targetEndDate",
+          "characteristicOverrides",
+          "effectiveCharacteristics",
+          "completedAt",
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "version"
+        ],
+        "title": "WorkItemResponse",
+        "type": "object"
+      },
+      "WorkItemStatus": {
+        "enum": [
+          "draft",
+          "ready",
+          "in_progress",
+          "completed",
+          "cancelled",
+          "archived"
+        ],
+        "title": "WorkItemStatus",
+        "type": "string"
+      },
+      "WorkItemTreeNode": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristicOverrides": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialWorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTreeNode"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completedat"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "deadlineAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadlineat"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "effectiveCharacteristics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkCharacteristics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimatedEffortSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimatedeffortseconds"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WorkItemKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentid"
+          },
+          "plannedStartAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plannedstartat"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkItemStatus"
+          },
+          "targetEndDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetenddate"
+          },
+          "targetStartDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetstartdate"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "workTypeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeid"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "parentId",
+          "workTypeId",
+          "name",
+          "description",
+          "status",
+          "position",
+          "priority",
+          "estimatedEffortSeconds",
+          "plannedStartAt",
+          "deadlineAt",
+          "targetStartDate",
+          "targetEndDate",
+          "characteristicOverrides",
+          "effectiveCharacteristics",
+          "completedAt",
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "version",
+          "children"
+        ],
+        "title": "WorkItemTreeNode",
+        "type": "object"
+      },
+      "WorkTypeListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkTypeResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WorkTypeListResponse",
+        "type": "object"
+      },
+      "WorkTypeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "characteristics": {
+            "$ref": "#/components/schemas/WorkCharacteristics"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "system": {
+            "title": "System",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "displayName",
+          "description",
+          "characteristics",
+          "system",
+          "version"
+        ],
+        "title": "WorkTypeResponse",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -576,7 +1714,7 @@
   "info": {
     "description": "Client-independent REST API for Taskiller.",
     "title": "Taskiller API",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1162,6 +2300,850 @@
         "summary": "Update Preferences",
         "tags": [
           "User"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/next-action": {
+      "get": {
+        "operationId": "getProjectNextAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectNextActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Project Next Action",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-items": {
+      "get": {
+        "operationId": "listWorkItems",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WorkItemKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WorkItemStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parentId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parentid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeDeleted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includedeleted",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Work Items",
+        "tags": [
+          "Work"
+        ]
+      },
+      "post": {
+        "operationId": "createWorkItem",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create Work Item",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-items/{workItemId}": {
+      "delete": {
+        "operationId": "deleteWorkItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete Work Item",
+        "tags": [
+          "Work"
+        ]
+      },
+      "get": {
+        "operationId": "getWorkItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Work Item",
+        "tags": [
+          "Work"
+        ]
+      },
+      "patch": {
+        "operationId": "updateWorkItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update Work Item",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-items/{workItemId}/children": {
+      "get": {
+        "operationId": "listWorkItemChildren",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemChildrenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Work Item Children",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-items/{workItemId}/reorder": {
+      "post": {
+        "operationId": "reorderWorkItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderWorkItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Reorder Work Item",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-items/{workItemId}/tree": {
+      "get": {
+        "operationId": "getWorkItemTree",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTreeNode"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Work Item Tree",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-types": {
+      "get": {
+        "operationId": "listWorkTypes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTypeListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Work Types",
+        "tags": [
+          "Work"
+        ]
+      },
+      "post": {
+        "operationId": "createWorkType",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create Work Type",
+        "tags": [
+          "Work"
+        ]
+      }
+    },
+    "/api/v1/work-types/{workTypeId}": {
+      "delete": {
+        "operationId": "deleteWorkType",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workTypeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Worktypeid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete Work Type",
+        "tags": [
+          "Work"
+        ]
+      },
+      "get": {
+        "operationId": "getWorkType",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workTypeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Worktypeid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Work Type",
+        "tags": [
+          "Work"
+        ]
+      },
+      "patch": {
+        "operationId": "updateWorkType",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workTypeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Worktypeid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update Work Type",
+        "tags": [
+          "Work"
         ]
       }
     },

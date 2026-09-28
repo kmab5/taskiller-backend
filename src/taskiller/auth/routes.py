@@ -2,7 +2,15 @@ from datetime import UTC
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Header, Path as ApiPath, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Cookie,
+    Header,
+    Path as ApiPath,
+    Request,
+    Response,
+    status,
+)
 from sqlalchemy import select
 
 from taskiller.auth.dependencies import CurrentAuth
