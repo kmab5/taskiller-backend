@@ -1,15 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import (
-    APIRouter,
-    Header,
-    Path as ApiPath,
-    Query,
-    Request,
-    Response,
-    status as http_status,
-)
+from fastapi import APIRouter, Header, Path, Query, Request, Response, status
 
 from taskiller.auth.dependencies import CurrentAuth
 from taskiller.db.dependencies import DbSession
@@ -39,9 +31,9 @@ IdempotencyKey = Annotated[
     Header(alias="Idempotency-Key", min_length=8, max_length=200),
 ]
 IfMatch = Annotated[str | None, Header(alias="If-Match")]
-WorkTypeId = Annotated[UUID, ApiPath(alias="workTypeId")]
-WorkItemId = Annotated[UUID, ApiPath(alias="workItemId")]
-ProjectId = Annotated[UUID, ApiPath(alias="projectId")]
+WorkTypeId = Annotated[UUID, Path(alias="workTypeId")]
+WorkItemId = Annotated[UUID, Path(alias="workItemId")]
+ProjectId = Annotated[UUID, Path(alias="projectId")]
 
 
 def _service(request: Request, db: DbSession, auth: CurrentAuth) -> WorkService:
@@ -72,7 +64,7 @@ async def list_work_types(
 @router.post(
     "/work-types",
     response_model=WorkTypeResponse,
-    status_code=http_status.HTTP_201_CREATED,
+    status_code=status.HTTP_201_CREATED,
     operation_id="createWorkType",
 )
 async def create_work_type(
@@ -127,7 +119,7 @@ async def update_work_type(
 
 @router.delete(
     "/work-types/{workTypeId}",
-    status_code=http_status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT,
     operation_id="deleteWorkType",
 )
 async def delete_work_type(
@@ -138,7 +130,7 @@ async def delete_work_type(
     if_match: IfMatch = None,
 ) -> Response:
     await _service(request, db, auth).delete_work_type(work_type_id, if_match)
-    return Response(status_code=http_status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/work-items", response_model=WorkItemPage, operation_id="listWorkItems")
@@ -166,7 +158,7 @@ async def list_work_items(
 @router.post(
     "/work-items",
     response_model=WorkItemResponse,
-    status_code=http_status.HTTP_201_CREATED,
+    status_code=status.HTTP_201_CREATED,
     operation_id="createWorkItem",
 )
 async def create_work_item(
@@ -221,7 +213,7 @@ async def update_work_item(
 
 @router.delete(
     "/work-items/{workItemId}",
-    status_code=http_status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT,
     operation_id="deleteWorkItem",
 )
 async def delete_work_item(
@@ -232,7 +224,7 @@ async def delete_work_item(
     if_match: IfMatch = None,
 ) -> Response:
     await _service(request, db, auth).delete_work_item(work_item_id, if_match)
-    return Response(status_code=http_status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

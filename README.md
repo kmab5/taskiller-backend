@@ -4,7 +4,7 @@ Client-independent backend for **Taskiller** — a task execution and focus syst
 
 ## Status
 
-**Round 3 complete: Work Model.**
+**Round 4 complete: Focus & Recommendation Engine.**
 
 Implemented so far:
 
@@ -28,8 +28,16 @@ Implemented so far:
 - WorkItem state machine, ordering, soft deletion, trees and next-action selection
 - database-backed idempotency for create/reorder mutations
 - cursor pagination and ownership-safe Work queries
+- immutable, versioned Focus Plan recommendation snapshots
+- deterministic evidence-informed Focus recommendation engine
+- preference-aware strategy selection without fake confidence scores
+- Chore and Sprint recommendation generation
+- study/retrieval-aware plans
+- editable Focus Plans with normalized ordered segments
+- reusable generic Focus Plan templates
+- Focus Plan ETags, soft deletion, pagination and idempotent creates
 
-Round 4 will add Focus Plans and the deterministic evidence-informed recommendation engine.
+Round 5 will add the Execution Session and append-only event engine.
 
 See:
 
@@ -37,6 +45,8 @@ See:
 - `docs/AUTH.md`
 - `docs/ROUND_2.md`
 - `docs/ROUND_3.md`
+- `docs/ROUND_4.md`
+- `docs/FOCUS.md`
 - `docs/WORK.md`
 - `docs/DEVELOPMENT_ROUNDS.md`
 - `openapi/current.json` — OpenAPI generated from the implemented application

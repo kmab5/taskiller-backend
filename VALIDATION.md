@@ -1,53 +1,53 @@
-# Round 3 Validation
+# Round 4 Validation
 
 Validated on 2026-09-28 in the artifact environment.
 
 ## Reported CI lint fixes
 
-The Round 2 Ruff failures supplied before this round were corrected before Work-domain implementation:
+The four Ruff failures supplied for the Round 3 artifact were corrected before Round 4 implementation:
 
-- import organization in `alembic/env.py`, `auth/routes.py` and `users/schemas.py`
-- unnecessary quoted annotations in settings, ORM models and user schemas
-- `JsonFormatter._reserved` marked as `ClassVar[set[str]]`
+- `I001` in `src/taskiller/auth/routes.py`: removed the aliased FastAPI `Path` import and normalized the import block.
+- `I001` in `src/taskiller/db/models.py`: placed the all-caps `JSON` import in Ruff/isort type order and normalized the SQLAlchemy import block.
+- `I001` in `src/taskiller/work/routes.py`: removed `Path`/`status` aliases and normalized the FastAPI import block.
+- `SIM117` in `tests/integration/work/test_work_flow.py`: combined the nested context managers into one `with` statement.
 
-New Round 3 source follows the same 100-character Ruff configuration. Ruff itself is not installed in this offline artifact runtime, so a successful local Ruff execution is not claimed; CI remains authoritative for Ruff and Pyright.
+Round 4 source was also checked for 100-character line length, unused top-level imports, quoted forward annotations, mutable unannotated class literals, and nested single-body `with` statements. Ruff and Pyright binaries are not installed in this offline artifact runtime, so a successful local execution of those tools is not claimed; CI remains authoritative for the complete Ruff/Pyright rule set.
 
 ## Passed locally
 
-- `pytest tests/unit -q`: **26 passed**
-- full `pytest -q`: **26 passed, 14 skipped**
-  - the fourteen skipped tests require `TASKILLER_TEST_DATABASE_URL`
+- full `pytest -q`: **41 passed, 18 skipped**
+  - the eighteen skipped tests require `TASKILLER_TEST_DATABASE_URL`
 - `python -m compileall src tests alembic scripts`: passed
-- SQLAlchemy `configure_mappers()`: passed, **9 mapped tables**
+- SQLAlchemy `configure_mappers()`: passed, **12 mapped tables**
 - FastAPI application/OpenAPI construction: passed
-- generated OpenAPI 3.1 document: **23 paths / 31 operations**
+- generated OpenAPI 3.1 document: **27 paths / 38 operations**, API version **0.4.0**
+- all generated local OpenAPI `$ref` targets resolve
 - OpenAPI export written to `openapi/current.json`
-- Alembic offline `upgrade head --sql`: passed, including Round 3 tables, seeds and hierarchy trigger
-- Alembic offline downgrade `20260928_0002:base --sql`: passed
+- Alembic offline `upgrade head --sql`: passed through Round 4
+- Alembic offline downgrade `20260928_0003:base --sql`: passed
+- `git diff --check`: passed
 - source/test/migration 100-character line-length scan: passed
 
-## PostgreSQL coverage included
+## Round 4 regression coverage
 
-CI provisions PostgreSQL 18, upgrades to Alembic `head`, and executes the integration suite. Round 3 adds coverage for:
+The unit/contract suite verifies:
 
-- built-in WorkType visibility
-- custom WorkType idempotent creation, update and deletion
-- immutable system WorkTypes
-- Project -> Sprint -> Chore and Project -> Chore hierarchy rules
-- direct database rejection of an invalid orphan Sprint, proving trigger enforcement
-- tree traversal and Project next-action selection
-- terminal Project next-action behavior
-- WorkItem state transitions and completion timestamp handling
-- soft deletion and parent deletion guards
-- sibling reordering and idempotent replay
-- idempotency-key request mismatch rejection
-- stable cursor pagination
-- `ON DELETE SET NULL` when a custom WorkType is removed
+- stable Focus API paths and operation IDs
+- required idempotency headers on recommendation/plan creation
+- Focus segment duration/link validation
+- template/recommendation source invariants
+- short high-continuity tasks remain a single block
+- long structured work includes flexible recovery without assuming 25/5 Pomodoro
+- learning recommendations include retrieval/review when the resolved strategy allows it
+- explicit continuous strategy remains continuous for learning work
+- available-time budgets include suggested recovery breaks
+- uncapped study plans preserve estimated active-work time
+- generated work blocks remain at or below 90 minutes even with longer user block preferences
 
-The existing Round 2 authentication/readiness integration tests remain in the suite and were adjusted so cleanup does not erase globally seeded WorkTypes.
+PostgreSQL integration coverage is included for recommendation idempotency, immutable recommendation snapshots, saving edited recommendation-derived plans, Focus Plan ETag updates/deletion, study recommendations, and Project recommendation rejection. Existing authentication, readiness, Work hierarchy/state/order/idempotency tests remain in the suite.
 
 ## Environment limitations
 
-This artifact runtime has Python 3.13 rather than the project target Python 3.14 and does not contain PostgreSQL, psycopg, Ruff or Pyright. Network access is disabled, so those missing tools cannot be installed here.
+This artifact runtime has Python 3.13 rather than the project target Python 3.14 and does not contain PostgreSQL, psycopg, Ruff or Pyright. Network access from the execution container is disabled, so those missing tools cannot be installed here.
 
-Accordingly, the PostgreSQL integration tests, Ruff and Pyright are **not claimed as locally executed**. `.github/workflows/ci.yml` uses Python 3.14, installs the declared dependencies, runs Ruff and Pyright, provisions PostgreSQL 18, applies migrations, runs the complete suite, exports OpenAPI and builds the container.
+Accordingly, PostgreSQL integration tests, Ruff and Pyright are **not claimed as locally executed**. `.github/workflows/ci.yml` uses Python 3.14, installs the declared dependencies, runs Ruff and Pyright, provisions PostgreSQL 18, applies migrations, runs the complete suite, exports OpenAPI and builds the container.

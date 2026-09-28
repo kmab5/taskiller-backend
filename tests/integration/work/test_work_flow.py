@@ -377,22 +377,21 @@ def test_database_rejects_invalid_hierarchy_even_outside_service(client: TestCli
     owner_id = UUID(me.json()["id"])
 
     engine = create_engine(_database_url())
-    with pytest.raises(DBAPIError) as caught:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    """
-                    INSERT INTO work_items (
-                        id, owner_id, kind, parent_id, name, status, position,
-                        created_at, updated_at, version
-                    ) VALUES (
-                        :id, :owner_id, 'sprint', NULL, 'Invalid sprint', 'draft', 1024,
-                        now(), now(), 1
-                    )
-                    """
-                ),
-                {"id": uuid4(), "owner_id": owner_id},
-            )
+    with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO work_items (
+                    id, owner_id, kind, parent_id, name, status, position,
+                    created_at, updated_at, version
+                ) VALUES (
+                    :id, :owner_id, 'sprint', NULL, 'Invalid sprint', 'draft', 1024,
+                    now(), now(), 1
+                )
+                """
+            ),
+            {"id": uuid4(), "owner_id": owner_id},
+        )
     engine.dispose()
     assert "sprint must have a project parent" in str(caught.value)
 

@@ -6,7 +6,7 @@ from fastapi import (
     APIRouter,
     Cookie,
     Header,
-    Path as ApiPath,
+    Path,
     Request,
     Response,
     status,
@@ -206,7 +206,7 @@ async def list_sessions(db: DbSession, auth: CurrentAuth) -> AuthSessionsRespons
     operation_id="revokeAuthSession",
 )
 async def revoke_session(
-    session_id: Annotated[UUID, ApiPath(alias="sessionId")],
+    session_id: Annotated[UUID, Path(alias="sessionId")],
     request: Request,
     response: Response,
     db: DbSession,
