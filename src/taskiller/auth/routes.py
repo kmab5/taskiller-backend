@@ -28,6 +28,7 @@ from taskiller.core.problems import ApiError
 from taskiller.core.time import utc_now
 from taskiller.db.dependencies import DbSession
 from taskiller.db.models import AuthSession
+from taskiller.operations.security import enforce_rate_limit, record_security_event, request_subject
 from taskiller.users.presenters import user_to_response
 from taskiller.users.schemas import AuthResponse
 
@@ -97,7 +98,16 @@ async def register(
     db: DbSession,
     user_agent: Annotated[str | None, Header()] = None,
 ) -> AuthResponse:
+    settings = request.app.state.settings
+    await enforce_rate_limit(
+        request,
+        scope="auth_register",
+        subject=request_subject(request, str(payload.email)),
+        limit=settings.auth_register_limit,
+        window_seconds=settings.auth_register_window_seconds,
+    )
     issued = await _service(request, db).register(payload, (user_agent or "")[:200] or None)
+    await record_security_event(request, event_type="account_registered", user_id=issued.user.id)
     _set_refresh_cookie(response, request, issued)
     return _auth_response(issued, request)
 
@@ -114,7 +124,16 @@ async def login(
     response: Response,
     db: DbSession,
 ) -> AuthResponse:
+    settings = request.app.state.settings
+    await enforce_rate_limit(
+        request,
+        scope="auth_login",
+        subject=request_subject(request, str(payload.email)),
+        limit=settings.auth_login_limit,
+        window_seconds=settings.auth_login_window_seconds,
+    )
     issued = await _service(request, db).login(payload)
+    await record_security_event(request, event_type="login_succeeded", user_id=issued.user.id)
     _set_refresh_cookie(response, request, issued)
     return _auth_response(issued, request)
 
@@ -255,6 +274,14 @@ async def request_password_reset(
     request: Request,
     db: DbSession,
 ) -> None:
+    settings = request.app.state.settings
+    await enforce_rate_limit(
+        request,
+        scope="password_reset",
+        subject=request_subject(request, str(payload.email)),
+        limit=settings.auth_password_reset_limit,
+        window_seconds=settings.auth_password_reset_window_seconds,
+    )
     await _service(request, db).request_password_reset(str(payload.email))
 
 

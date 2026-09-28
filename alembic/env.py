@@ -8,6 +8,7 @@ from taskiller.db import models as _models  # noqa: F401 - registers metadata
 from taskiller.db.base import Base
 from taskiller.execution import models as _execution_models  # noqa: F401 - registers metadata
 from taskiller.focus import models as _focus_models  # noqa: F401 - registers metadata
+from taskiller.operations import models as _operations_models  # noqa: F401 - registers metadata
 from taskiller.work import models as _work_models  # noqa: F401 - registers metadata
 
 config = context.config

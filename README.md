@@ -4,7 +4,7 @@ Client-independent backend for **Taskiller** — a task execution and focus syst
 
 ## Status
 
-**Round 6 complete: Analytics & Personalization.**
+**Round 7 complete: Privacy & Operations.**
 
 Implemented so far:
 
@@ -51,8 +51,14 @@ Implemented so far:
 - user, Work Type and WorkItem/Project/Sprint analytics rollups
 - timezone-aware day/week time series and local-hour focus patterns
 - conservative history-informed Focus recommendation personalization
+- privacy-safe asynchronous user data exports
+- scheduled account deletion with immediate credential revocation
+- PostgreSQL outbox worker with SKIP LOCKED claims and lease recovery
+- database-backed sensitive-endpoint rate limiting
+- append-only security/operational audit events
+- automated retention cleanup for expired credentials, exports and operational data
 
-Round 7 will add privacy and operational lifecycle features.
+Round 8 will harden and prepare the backend for production release.
 
 See:
 
@@ -63,6 +69,8 @@ See:
 - `docs/ROUND_4.md`
 - `docs/ROUND_5.md`
 - `docs/ROUND_6.md`
+- `docs/ROUND_7.md`
+- `docs/OPERATIONS.md`
 - `docs/ANALYTICS.md`
 - `docs/EXECUTION.md`
 - `docs/FOCUS.md`
