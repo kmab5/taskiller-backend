@@ -43,4 +43,4 @@ If a Chore has neither a usable effort estimate nor `availableTimeSeconds`, or l
 
 ## Evidence posture
 
-Reason labels distinguish `evidence_backed_general`, `evidence_mixed`, `product_heuristic`, `personal_pattern`, and `user_preference`. Round 4 emits the first, second, third and fifth categories; `personal_pattern` is activated only after Execution/Analytics data exists.
+Reason labels distinguish `evidence_backed_general`, `evidence_mixed`, `product_heuristic`, `personal_pattern`, and `user_preference`. Round 6 activates `personal_pattern` only after the conservative completed-session thresholds in `ANALYTICS.md` are met. Eligible structured/flexible Chore plans use the personal median as a bounded descriptive signal; explicit strategy and user min/max settings still constrain the result.

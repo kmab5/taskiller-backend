@@ -9,6 +9,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from taskiller.analytics.service import AnalyticsService
 from taskiller.core.idempotency import claim_idempotency, complete_idempotency
 from taskiller.core.problems import ApiError
 from taskiller.core.time import utc_now
@@ -36,6 +37,7 @@ from taskiller.focus.schemas import (
     FocusPlanSource,
     PageMeta,
     RecommendationProvenance,
+    RecommendationReasonLabel,
     RecommendationStrategy,
     UpdateFocusPlanRequest,
 )
@@ -110,12 +112,32 @@ class FocusService:
             or engine_preferences.work_block_min_seconds is not None
             or engine_preferences.work_block_max_seconds is not None
         )
+        personalization_signal = None
         if WorkItemKind(work_item.kind) is WorkItemKind.CHORE:
             characteristics = await self._characteristics_for(work_item)
             if characteristics is None:
                 raise self._missing_context(
                     "The Chore needs a Work Type or complete characteristic overrides."
                 )
+            if work_item.work_type_id is not None:
+                work_type = await self.db.get(WorkType, work_item.work_type_id)
+                if work_type is not None:
+                    personalization_signal = await AnalyticsService(
+                        self.db, owner_id=self.owner_id
+                    ).personalization_signal(
+                        work_type_id=work_type.id,
+                        work_type_slug=work_type.slug,
+                    )
+                    if personalization_signal is not None:
+                        engine_preferences = EnginePreferences(
+                            strategy=engine_preferences.strategy,
+                            work_block_min_seconds=engine_preferences.work_block_min_seconds,
+                            work_block_max_seconds=engine_preferences.work_block_max_seconds,
+                            personal_work_block_seconds=(
+                                personalization_signal.target_seconds
+                            ),
+                            personal_sample_size=personalization_signal.sample_size,
+                        )
             effort = work_item.estimated_effort_seconds
             if not effort:
                 effort = payload.available_time_seconds
@@ -172,10 +194,18 @@ class FocusService:
                 }
             }
 
+        history_informed = any(
+            reason.label is RecommendationReasonLabel.PERSONAL_PATTERN
+            for reason in generated.reasons
+        )
         provenance = (
-            RecommendationProvenance.PREFERENCE_INFORMED
-            if preference_informed
-            else RecommendationProvenance.BOOTSTRAP
+            RecommendationProvenance.HISTORY_INFORMED
+            if history_informed
+            else (
+                RecommendationProvenance.PREFERENCE_INFORMED
+                if preference_informed
+                else RecommendationProvenance.BOOTSTRAP
+            )
         )
         now = utc_now()
         row = FocusPlanRecommendationModel(
@@ -193,6 +223,16 @@ class FocusService:
                     "preferredWorkBlockMinSeconds": engine_preferences.work_block_min_seconds,
                     "preferredWorkBlockMaxSeconds": engine_preferences.work_block_max_seconds,
                 },
+                "personalizationSignal": (
+                    {
+                        "workTypeSlug": personalization_signal.work_type_slug,
+                        "sampleSize": personalization_signal.sample_size,
+                        "medianFocusScore": personalization_signal.median_focus_score,
+                        "targetWorkBlockSeconds": personalization_signal.target_seconds,
+                    }
+                    if personalization_signal is not None
+                    else None
+                ),
             },
             plan_snapshot_json=generated.plan.model_dump(mode="json", by_alias=True),
             reasons_json=[

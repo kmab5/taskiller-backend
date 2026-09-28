@@ -81,6 +81,7 @@ class ExecutionSessionModel(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     plan_snapshot_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     recommendation_snapshot_json: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    work_context_snapshot_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

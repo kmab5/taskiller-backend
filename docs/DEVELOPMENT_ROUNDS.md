@@ -7,7 +7,7 @@ The backend is planned as **eight implementation rounds**. A round is a coherent
 3. **Work model — complete** — WorkTypes, Project/Sprint/Chore CRUD, hierarchy invariants, ordering, states, tree/next-action queries, ETags/versioning and ownership rules.
 4. **Focus & recommendation engine — complete** — work characteristics, deterministic evidence-informed rules, recommendation snapshots, Focus Plan/segment CRUD and customization.
 5. **Execution engine — complete** — Sessions, append-only Events, one-open-session invariant, pause/resume/advance/complete/abandon, idempotency, cross-device conflicts and session reviews.
-6. **Analytics & personalization** — duration derivation, estimate calibration, user/task/project summaries, time series, project rollups and historical signals fed back into recommendations.
+6. **Analytics & personalization — complete** — duration derivation, estimate calibration, user/task/project summaries, time series, project rollups and historical signals fed back into recommendations.
 7. **Privacy & operations** — data exports, deletion lifecycle, PostgreSQL outbox/worker, retention, rate limits, operational/security logging and recovery behavior.
 8. **Hardening & production release** — complete OpenAPI/problem catalog, authorization matrix, load/security tests, migrations audit, Koyeb/Neon production configuration, observability and end-to-end verification.
 

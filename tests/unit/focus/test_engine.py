@@ -158,3 +158,27 @@ def test_user_block_preferences_cannot_push_recommendation_above_ninety_minutes(
     work = [segment for segment in result.plan.segments if segment.kind is FocusSegmentKind.WORK]
     assert work
     assert all((segment.target_seconds or 0) <= 90 * 60 for segment in work)
+
+
+def test_personal_history_can_shift_structured_block_target() -> None:
+    preferences = EnginePreferences(
+        strategy=RecommendationStrategy.AUTO,
+        work_block_min_seconds=None,
+        work_block_max_seconds=None,
+        personal_work_block_seconds=65 * 60,
+        personal_sample_size=8,
+    )
+    result = generate_chore_recommendation(
+        work_item_id=uuid4(),
+        effort_seconds=3 * 60 * 60,
+        characteristics=_chars(),
+        requested_strategy=RecommendationStrategy.STRUCTURED,
+        preferences=preferences,
+        available_time_seconds=None,
+    )
+
+    work = [segment for segment in result.plan.segments if segment.kind is FocusSegmentKind.WORK]
+    assert work[0].target_seconds == 65 * 60
+    assert any(
+        reason.code == "PERSONAL_COMPLETED_SESSION_PATTERN" for reason in result.reasons
+    )

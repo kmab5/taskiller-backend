@@ -4,7 +4,7 @@ Client-independent backend for **Taskiller** — a task execution and focus syst
 
 ## Status
 
-**Round 5 complete: Execution Engine.**
+**Round 6 complete: Analytics & Personalization.**
 
 Implemented so far:
 
@@ -45,8 +45,14 @@ Implemented so far:
 - Session ETags and stale-device conflict rejection
 - explicit WorkItem completion from execution
 - terminal Session reviews
+- immutable historical Work context snapshots for analytics
+- deterministic active-work/break/pause reconstruction from Session Events
+- estimate calibration, start-delay and plan-adherence metrics
+- user, Work Type and WorkItem/Project/Sprint analytics rollups
+- timezone-aware day/week time series and local-hour focus patterns
+- conservative history-informed Focus recommendation personalization
 
-Round 6 will add analytics and history-informed personalization.
+Round 7 will add privacy and operational lifecycle features.
 
 See:
 
@@ -56,6 +62,8 @@ See:
 - `docs/ROUND_3.md`
 - `docs/ROUND_4.md`
 - `docs/ROUND_5.md`
+- `docs/ROUND_6.md`
+- `docs/ANALYTICS.md`
 - `docs/EXECUTION.md`
 - `docs/FOCUS.md`
 - `docs/WORK.md`

@@ -14,7 +14,7 @@ from taskiller.focus.schemas import (
 )
 from taskiller.work.schemas import LearningMode, WorkCharacteristics
 
-ENGINE_VERSION = "focus-v1.0"
+ENGINE_VERSION = "focus-v1.1"
 _MIN_RECOMMENDED_BLOCK_SECONDS = 15 * 60
 _MAX_RECOMMENDED_BLOCK_SECONDS = 90 * 60
 _DEFAULT_BLOCK_SECONDS = 50 * 60
@@ -36,6 +36,8 @@ class EnginePreferences:
     strategy: RecommendationStrategy
     work_block_min_seconds: int | None
     work_block_max_seconds: int | None
+    personal_work_block_seconds: int | None = None
+    personal_sample_size: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,11 +229,21 @@ def generate_chore_recommendation(
             reasons=reasons,
         )
 
-    base_target = (
+    base_target = preferences.personal_work_block_seconds or (
         _HIGH_CONTINUITY_BLOCK_SECONDS
         if characteristics.continuity_need.value == "high"
         else _DEFAULT_BLOCK_SECONDS
     )
+    if preferences.personal_work_block_seconds is not None:
+        reasons.append(
+            _reason(
+                "PERSONAL_COMPLETED_SESSION_PATTERN",
+                RecommendationReasonLabel.PERSONAL_PATTERN,
+                "The work-block target is adjusted toward your recent completed-session "
+                f"pattern ({preferences.personal_sample_size} sessions). This is a "
+                "descriptive personalization signal, not proof of higher productivity.",
+            )
+        )
     block_target = _clamp_block(base_target, preferences)
     flexible = strategy is RecommendationStrategy.FLEXIBLE
     segments: list[FocusPlanSegmentInput] = []

@@ -95,7 +95,7 @@ def test_recommendation_is_idempotent_and_can_be_saved_as_edited_plan(client: Te
     )
     assert replay.status_code == 201
     assert replay.json()["id"] == recommendation.json()["id"]
-    assert recommendation.json()["engineVersion"] == "focus-v1.0"
+    assert recommendation.json()["engineVersion"] == "focus-v1.1"
     assert recommendation.json()["reasons"]
 
     selected_segments = recommendation.json()["plan"]["segments"]

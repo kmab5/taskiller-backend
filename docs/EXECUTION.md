@@ -40,4 +40,4 @@ No websocket is required for v1 correctness.
 
 ## Persistence and restarts
 
-There is no countdown process to lose. After a backend restart, the Session row and Event stream contain everything required to render the same state. Historical analytics in Round 6 will derive active-work, break and paused intervals from these authoritative records.
+There is no countdown process to lose. After a backend restart, the Session row and Event stream contain everything required to render the same state. Round 6 analytics derives active-work, break and paused intervals from these authoritative records; no in-memory timer history is required.

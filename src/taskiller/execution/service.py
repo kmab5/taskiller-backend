@@ -46,7 +46,7 @@ from taskiller.focus.models import (
 )
 from taskiller.focus.schemas import FocusPlanSnapshot, FocusPlanSegmentInput, FocusSegmentKind
 from taskiller.users.etag import make_etag, require_etag
-from taskiller.work.models import WorkItem
+from taskiller.work.models import WorkItem, WorkType
 from taskiller.work.schemas import WorkItemKind, WorkItemStatus
 
 _TERMINAL_WORK_STATES = {
@@ -158,6 +158,7 @@ class ExecutionService:
             }
 
         plan_snapshot = self._snapshot_plan(focus_plan)
+        work_context_snapshot = await self._snapshot_work_context(work_item, focus_plan)
         now = utc_now()
         row = ExecutionSessionModel(
             id=uuid4(),
@@ -173,6 +174,7 @@ class ExecutionService:
             ended_at=None,
             plan_snapshot_json=plan_snapshot.model_dump(mode="json", by_alias=True),
             recommendation_snapshot_json=recommendation_snapshot,
+            work_context_snapshot_json=work_context_snapshot,
             created_at=now,
             updated_at=now,
             version=1,
@@ -693,6 +695,83 @@ class ExecutionService:
         if lock:
             stmt = stmt.with_for_update().execution_options(populate_existing=True)
         return await self.db.scalar(stmt)
+
+    async def _snapshot_work_context(
+        self, work_item: WorkItem, focus_plan: FocusPlanModel
+    ) -> dict[str, object]:
+        all_items = list(
+            (
+                await self.db.scalars(
+                    select(WorkItem).where(WorkItem.owner_id == self.owner_id)
+                )
+            ).all()
+        )
+        item_by_id = {item.id: item for item in all_items}
+        referenced_ids = {work_item.id}
+        for segment in focus_plan.segments:
+            if segment.linked_work_item_id is not None:
+                referenced_ids.add(segment.linked_work_item_id)
+
+        work_type_ids: set[UUID] = set()
+        for item_id in referenced_ids:
+            item = item_by_id.get(item_id)
+            if item is not None and item.work_type_id is not None:
+                work_type_ids.add(item.work_type_id)
+        work_types: dict[UUID, WorkType] = {}
+        if work_type_ids:
+            rows = list(
+                (
+                    await self.db.scalars(
+                        select(WorkType).where(WorkType.id.in_(work_type_ids))
+                    )
+                ).all()
+            )
+            work_types = {row.id: row for row in rows}
+
+        def item_snapshot(item: WorkItem) -> dict[str, object]:
+            ancestor_ids: list[str] = []
+            seen: set[UUID] = set()
+            parent_id = item.parent_id
+            while parent_id is not None and parent_id not in seen:
+                seen.add(parent_id)
+                ancestor_ids.append(str(parent_id))
+                parent = item_by_id.get(parent_id)
+                if parent is None:
+                    break
+                parent_id = parent.parent_id
+            work_type = (
+                work_types.get(item.work_type_id)
+                if item.work_type_id is not None
+                else None
+            )
+            return {
+                "id": str(item.id),
+                "kind": item.kind,
+                "parentId": str(item.parent_id) if item.parent_id is not None else None,
+                "ancestorIds": ancestor_ids,
+                "workTypeId": str(item.work_type_id) if item.work_type_id is not None else None,
+                "workTypeSlug": work_type.slug if work_type is not None else None,
+                "estimatedEffortSeconds": item.estimated_effort_seconds,
+                "plannedStartAt": (
+                    item.planned_start_at.isoformat()
+                    if item.planned_start_at is not None
+                    else None
+                ),
+            }
+
+        linked: dict[str, object] = {}
+        for item_id in referenced_ids:
+            if item_id == work_item.id:
+                continue
+            item = item_by_id.get(item_id)
+            if item is not None:
+                linked[str(item_id)] = item_snapshot(item)
+
+        return {
+            "capturedAt": utc_now().isoformat(),
+            "target": item_snapshot(work_item),
+            "linkedWorkItems": linked,
+        }
 
     @staticmethod
     def _snapshot_plan(focus_plan: FocusPlanModel) -> FocusPlanSnapshot:

@@ -20,7 +20,7 @@ Round 4 adds the execution-planning layer between WorkItems and the Execution Se
 
 ## Deliberate boundary
 
-Round 4 does **not** infer historical personalization yet because completed Execution Sessions do not exist until Round 5. The engine schema already reserves `history_informed`; Round 6 will activate that provenance after enough real user history exists.
+Round 4 initially shipped without historical personalization because completed Execution Sessions did not yet exist. Round 6 now activates `history_informed` provenance after conservative completed-session thresholds are met; see `ANALYTICS.md`.
 
 A recommendation is immutable. A user can save it as a Focus Plan and edit that plan freely while retaining `recommendationId`, preserving the distinction between what Taskiller suggested and what the user chose.
 

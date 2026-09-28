@@ -21,6 +21,214 @@
         "title": "ActiveExecutionSession",
         "type": "object"
       },
+      "AnalyticsBucket": {
+        "enum": [
+          "day",
+          "week"
+        ],
+        "title": "AnalyticsBucket",
+        "type": "string"
+      },
+      "AnalyticsSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "activeWorkSeconds": {
+            "minimum": 0.0,
+            "title": "Activeworkseconds",
+            "type": "integer"
+          },
+          "breakSeconds": {
+            "minimum": 0.0,
+            "title": "Breakseconds",
+            "type": "integer"
+          },
+          "choresCompleted": {
+            "minimum": 0.0,
+            "title": "Chorescompleted",
+            "type": "integer"
+          },
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "medianEstimateErrorSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianestimateerrorseconds"
+          },
+          "medianStartDelaySeconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianstartdelayseconds"
+          },
+          "medianUninterruptedWorkSeconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianuninterruptedworkseconds"
+          },
+          "pausedSeconds": {
+            "minimum": 0.0,
+            "title": "Pausedseconds",
+            "type": "integer"
+          },
+          "planAdherenceRate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planadherencerate"
+          },
+          "requiredSegmentsCompleted": {
+            "minimum": 0.0,
+            "title": "Requiredsegmentscompleted",
+            "type": "integer"
+          },
+          "requiredSegmentsPlanned": {
+            "minimum": 0.0,
+            "title": "Requiredsegmentsplanned",
+            "type": "integer"
+          },
+          "sessionsAbandoned": {
+            "minimum": 0.0,
+            "title": "Sessionsabandoned",
+            "type": "integer"
+          },
+          "sessionsCompleted": {
+            "minimum": 0.0,
+            "title": "Sessionscompleted",
+            "type": "integer"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "activeWorkSeconds",
+          "breakSeconds",
+          "pausedSeconds",
+          "sessionsCompleted",
+          "sessionsAbandoned",
+          "choresCompleted",
+          "requiredSegmentsCompleted",
+          "requiredSegmentsPlanned"
+        ],
+        "title": "AnalyticsSummary",
+        "type": "object"
+      },
+      "AnalyticsTimeseries": {
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "$ref": "#/components/schemas/AnalyticsBucket"
+          },
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsTimeseriesPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "bucket",
+          "timezone",
+          "points"
+        ],
+        "title": "AnalyticsTimeseries",
+        "type": "object"
+      },
+      "AnalyticsTimeseriesPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "activeWorkSeconds": {
+            "minimum": 0.0,
+            "title": "Activeworkseconds",
+            "type": "integer"
+          },
+          "breakSeconds": {
+            "minimum": 0.0,
+            "title": "Breakseconds",
+            "type": "integer"
+          },
+          "bucketStart": {
+            "format": "date-time",
+            "title": "Bucketstart",
+            "type": "string"
+          },
+          "choresCompleted": {
+            "minimum": 0.0,
+            "title": "Chorescompleted",
+            "type": "integer"
+          },
+          "pausedSeconds": {
+            "minimum": 0.0,
+            "title": "Pausedseconds",
+            "type": "integer"
+          },
+          "sessionsCompleted": {
+            "minimum": 0.0,
+            "title": "Sessionscompleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bucketStart",
+          "activeWorkSeconds",
+          "breakSeconds",
+          "pausedSeconds",
+          "sessionsCompleted",
+          "choresCompleted"
+        ],
+        "title": "AnalyticsTimeseriesPoint",
+        "type": "object"
+      },
       "AppendSessionEventResponse": {
         "additionalProperties": false,
         "properties": {
@@ -640,6 +848,135 @@
         ],
         "title": "ExecutionSessionState",
         "type": "string"
+      },
+      "FocusPatternItem": {
+        "additionalProperties": false,
+        "properties": {
+          "medianFocusScore": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianfocusscore"
+          },
+          "medianUninterruptedWorkSeconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianuninterruptedworkseconds"
+          },
+          "p25UninterruptedWorkSeconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P25Uninterruptedworkseconds"
+          },
+          "p75UninterruptedWorkSeconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P75Uninterruptedworkseconds"
+          },
+          "recommendationPersonalizationEligible": {
+            "title": "Recommendationpersonalizationeligible",
+            "type": "boolean"
+          },
+          "sampleSize": {
+            "minimum": 0.0,
+            "title": "Samplesize",
+            "type": "integer"
+          },
+          "workTypeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeid"
+          },
+          "workTypeSlug": {
+            "title": "Worktypeslug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workTypeId",
+          "workTypeSlug",
+          "sampleSize",
+          "recommendationPersonalizationEligible"
+        ],
+        "title": "FocusPatternItem",
+        "type": "object"
+      },
+      "FocusPatterns": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FocusPatternItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "timeOfDay": {
+            "items": {
+              "$ref": "#/components/schemas/TimeOfDayPatternItem"
+            },
+            "title": "Timeofday",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "timezone",
+          "items",
+          "timeOfDay"
+        ],
+        "title": "FocusPatterns",
+        "type": "object"
       },
       "FocusPlan": {
         "additionalProperties": false,
@@ -1682,6 +2019,47 @@
         "title": "StartExecutionSessionRequest",
         "type": "object"
       },
+      "TimeOfDayPatternItem": {
+        "additionalProperties": false,
+        "properties": {
+          "activeWorkSeconds": {
+            "minimum": 0.0,
+            "title": "Activeworkseconds",
+            "type": "integer"
+          },
+          "hourStart": {
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hourstart",
+            "type": "integer"
+          },
+          "medianFocusScore": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianfocusscore"
+          },
+          "sessionCount": {
+            "minimum": 0.0,
+            "title": "Sessioncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hourStart",
+          "activeWorkSeconds",
+          "sessionCount"
+        ],
+        "title": "TimeOfDayPatternItem",
+        "type": "object"
+      },
       "UpdateFocusPlanRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2291,6 +2669,107 @@
         "title": "WorkCharacteristics",
         "type": "object"
       },
+      "WorkItemAnalytics": {
+        "additionalProperties": false,
+        "properties": {
+          "activeWorkSeconds": {
+            "minimum": 0.0,
+            "title": "Activeworkseconds",
+            "type": "integer"
+          },
+          "breakSeconds": {
+            "minimum": 0.0,
+            "title": "Breakseconds",
+            "type": "integer"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completedat"
+          },
+          "estimateErrorSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimateerrorseconds"
+          },
+          "firstStartedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firststartedat"
+          },
+          "pausedSeconds": {
+            "minimum": 0.0,
+            "title": "Pausedseconds",
+            "type": "integer"
+          },
+          "planAdherenceRate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planadherencerate"
+          },
+          "requiredSegmentsCompleted": {
+            "minimum": 0.0,
+            "title": "Requiredsegmentscompleted",
+            "type": "integer"
+          },
+          "requiredSegmentsPlanned": {
+            "minimum": 0.0,
+            "title": "Requiredsegmentsplanned",
+            "type": "integer"
+          },
+          "sessionCount": {
+            "minimum": 0.0,
+            "title": "Sessioncount",
+            "type": "integer"
+          },
+          "workItemId": {
+            "format": "uuid",
+            "title": "Workitemid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workItemId",
+          "activeWorkSeconds",
+          "breakSeconds",
+          "pausedSeconds",
+          "sessionCount",
+          "requiredSegmentsCompleted",
+          "requiredSegmentsPlanned",
+          "firstStartedAt",
+          "completedAt"
+        ],
+        "title": "WorkItemAnalytics",
+        "type": "object"
+      },
       "WorkItemChildrenResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2782,6 +3261,118 @@
         "title": "WorkItemTreeNode",
         "type": "object"
       },
+      "WorkTypeAnalytics": {
+        "additionalProperties": false,
+        "properties": {
+          "activeWorkSeconds": {
+            "minimum": 0.0,
+            "title": "Activeworkseconds",
+            "type": "integer"
+          },
+          "completionRate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completionrate"
+          },
+          "medianEstimateErrorSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianestimateerrorseconds"
+          },
+          "medianFocusScore": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianfocusscore"
+          },
+          "medianUninterruptedWorkSeconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianuninterruptedworkseconds"
+          },
+          "sessionCount": {
+            "minimum": 0.0,
+            "title": "Sessioncount",
+            "type": "integer"
+          },
+          "workTypeId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeid"
+          },
+          "workTypeSlug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worktypeslug"
+          }
+        },
+        "required": [
+          "workTypeId",
+          "workTypeSlug",
+          "activeWorkSeconds",
+          "sessionCount"
+        ],
+        "title": "WorkTypeAnalytics",
+        "type": "object"
+      },
+      "WorkTypeAnalyticsList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkTypeAnalytics"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WorkTypeAnalyticsList",
+        "type": "object"
+      },
       "WorkTypeListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2861,10 +3452,318 @@
   "info": {
     "description": "Client-independent REST API for Taskiller.",
     "title": "Taskiller API",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/analytics/focus-patterns": {
+      "get": {
+        "operationId": "getFocusPatterns",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FocusPatterns"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Focus Patterns",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/summary": {
+      "get": {
+        "operationId": "getAnalyticsSummary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Analytics Summary",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/timeseries": {
+      "get": {
+        "operationId": "getAnalyticsTimeseries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBucket"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsTimeseries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Analytics Timeseries",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/work-items/{workItemId}": {
+      "get": {
+        "operationId": "getWorkItemAnalytics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAnalytics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Work Item Analytics",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/work-types": {
+      "get": {
+        "operationId": "getWorkTypeAnalytics",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTypeAnalyticsList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Work Type Analytics",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
     "/api/v1/auth/email-verification/confirm": {
       "post": {
         "operationId": "confirmEmailVerification",
