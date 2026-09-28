@@ -4,7 +4,7 @@ Client-independent backend for **Taskiller** — a task execution and focus syst
 
 ## Status
 
-**Round 7 complete: Privacy & Operations.**
+**Backend v1 / Round 8 complete: Production Release.**
 
 Implemented so far:
 
@@ -57,8 +57,14 @@ Implemented so far:
 - database-backed sensitive-endpoint rate limiting
 - append-only security/operational audit events
 - automated retention cleanup for expired credentials, exports and operational data
+- request IDs, structured HTTP access logs and hardened response headers
+- schema-aware readiness and build/release metadata endpoints
+- advisory-locked production migrations
+- optional embedded outbox worker for one-service preview deployments
+- complete OpenAPI Problem schema/code catalog and authorization release audit
+- full v1 end-to-end release smoke test and deployment/load-smoke tooling
 
-Round 8 will harden and prepare the backend for production release.
+The planned eight-round backend is now **v1 feature-complete independently of the web client**.
 
 See:
 
@@ -71,6 +77,13 @@ See:
 - `docs/ROUND_6.md`
 - `docs/ROUND_7.md`
 - `docs/OPERATIONS.md`
+- `docs/PRODUCTION.md`
+- `docs/SECURITY.md`
+- `docs/AUTHORIZATION.md`
+- `docs/PROBLEMS.md`
+- `docs/OBSERVABILITY.md`
+- `docs/RUNBOOK.md`
+- `docs/ROUND_8.md`
 - `docs/ANALYTICS.md`
 - `docs/EXECUTION.md`
 - `docs/FOCUS.md`
@@ -91,7 +104,7 @@ Production direction: **Koyeb API + Neon PostgreSQL**.
 cp .env.example .env
 docker compose up -d postgres
 uv sync --dev
-uv run alembic upgrade head
+make migrate
 uv run uvicorn taskiller.main:app --app-dir src --reload
 ```
 
@@ -110,6 +123,7 @@ make typecheck
 make test
 make test-integration
 make openapi
+make release-check
 ```
 
 `make test-integration` requires `TASKILLER_TEST_DATABASE_URL` and a database migrated to `head`. CI provisions PostgreSQL and runs the migration before the full test suite.

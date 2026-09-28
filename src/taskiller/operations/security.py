@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from taskiller.core.config import Environment, Settings
 from taskiller.core.problems import ApiError
+from taskiller.core.runtime import request_client_ip
 from taskiller.core.time import utc_now
 from taskiller.operations.models import RateLimitBucket, SecurityEvent
 
@@ -24,7 +25,8 @@ def _subject_hash(value: str, settings: Settings) -> str:
 
 
 def request_subject(request: Request, extra: str = "") -> str:
-    host = request.client.host if request.client is not None else "unknown"
+    settings: Settings = request.app.state.settings
+    host = request_client_ip(request, settings)
     return f"{host}|{extra.casefold().strip()}"
 
 
@@ -91,7 +93,7 @@ async def record_security_event(
     metadata: dict[str, object] | None = None,
 ) -> None:
     settings: Settings = request.app.state.settings
-    host = request.client.host if request.client is not None else "unknown"
+    host = request_client_ip(request, settings)
     user_agent = (request.headers.get("user-agent") or "")[:300] or None
     try:
         async with request.app.state.database.session_factory() as db:

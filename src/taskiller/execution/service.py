@@ -857,7 +857,7 @@ class ExecutionService:
                 raise ValueError
             return at.astimezone(UTC), UUID(value[1])
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
-            raise ApiError(400, "invalid_cursor", "Invalid cursor") from exc
+            raise ApiError(422, "invalid_cursor", "Invalid cursor") from exc
 
     @staticmethod
     def _not_found(code: str, title: str) -> ApiError:

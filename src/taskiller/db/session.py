@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
 
 from sqlalchemy import text
@@ -25,7 +27,11 @@ class Database:
             self._engine = create_async_engine(
                 self._settings.database_url,
                 pool_pre_ping=True,
-                pool_recycle=300,
+                pool_recycle=self._settings.database_pool_recycle_seconds,
+                pool_size=self._settings.database_pool_size,
+                max_overflow=self._settings.database_max_overflow,
+                pool_timeout=self._settings.database_pool_timeout_seconds,
+                pool_use_lifo=True,
             )
         return self._engine
 
@@ -44,9 +50,13 @@ class Database:
         async with self.session_factory() as session:
             yield session
 
-    async def healthcheck(self) -> None:
+    async def healthcheck(self) -> str | None:
         async with self.engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
+            revision = (
+                await connection.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
+            ).scalar_one_or_none()
+            return str(revision) if revision is not None else None
 
     async def dispose(self) -> None:
         if self._engine is not None:

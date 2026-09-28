@@ -246,38 +246,56 @@ async def fail_job(db: AsyncSession, job_id: UUID, settings: Settings, error: Ex
     await db.commit()
 
 
+async def run_worker_loop(
+    database: Database,
+    settings: Settings,
+    *,
+    stop_event: asyncio.Event | None = None,
+    once: bool = False,
+) -> None:
+    worker_id = f"{socket.gethostname()}:{id(database)}"
+    async with database.session_factory() as db:
+        await recover_expired_leases(db)
+    async with database.session_factory() as db:
+        await ensure_retention_job(db, settings)
+    while stop_event is None or not stop_event.is_set():
+        async with database.session_factory() as db:
+            job = await claim_job(db, settings, worker_id)
+        if job is None:
+            if once:
+                return
+            if stop_event is None:
+                await asyncio.sleep(settings.outbox_poll_seconds)
+            else:
+                try:
+                    await asyncio.wait_for(
+                        stop_event.wait(), timeout=settings.outbox_poll_seconds
+                    )
+                except TimeoutError:
+                    pass
+            continue
+        try:
+            async with database.session_factory() as db:
+                current = await db.get(OutboxJob, job.id)
+                if current is None:
+                    continue
+                await process_job(db, current, settings)
+                await db.commit()
+            async with database.session_factory() as db:
+                await finish_job(db, job.id)
+        except Exception as exc:  # noqa: BLE001 - worker isolates job failures
+            logger.exception("outbox job failed", extra={"job_id": str(job.id)})
+            async with database.session_factory() as db:
+                await fail_job(db, job.id, settings, exc)
+        if once:
+            return
+
+
 async def run_worker(*, once: bool = False) -> None:
     settings = get_settings()
     database = Database(settings)
-    worker_id = f"{socket.gethostname()}:{id(database)}"
     try:
-        async with database.session_factory() as db:
-            await recover_expired_leases(db)
-        async with database.session_factory() as db:
-            await ensure_retention_job(db, settings)
-        while True:
-            async with database.session_factory() as db:
-                job = await claim_job(db, settings, worker_id)
-            if job is None:
-                if once:
-                    return
-                await asyncio.sleep(settings.outbox_poll_seconds)
-                continue
-            try:
-                async with database.session_factory() as db:
-                    current = await db.get(OutboxJob, job.id)
-                    if current is None:
-                        continue
-                    await process_job(db, current, settings)
-                    await db.commit()
-                async with database.session_factory() as db:
-                    await finish_job(db, job.id)
-            except Exception as exc:  # noqa: BLE001 - worker isolates job failures
-                logger.exception("outbox job failed", extra={"job_id": str(job.id)})
-                async with database.session_factory() as db:
-                    await fail_job(db, job.id, settings, exc)
-            if once:
-                return
+        await run_worker_loop(database, settings, once=once)
     finally:
         await database.dispose()
 

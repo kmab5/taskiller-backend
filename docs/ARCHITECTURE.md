@@ -45,8 +45,10 @@ The Python application owns both Taskiller identity/session state and domain sta
 - Active timers are state/timestamps in PostgreSQL, never in-memory countdowns.
 - Idempotency and optimistic concurrency are required for cross-device mutations.
 
-## Implemented through Round 3
+## v1 release architecture
 
-Identity/Auth and Work are production-shaped modules. Work owns WorkTypes and WorkItems; the shared core currently provides configuration, structured problems and mutation idempotency. PostgreSQL is the source of truth for ownership, hierarchy, ordering and version state.
+All eight planned backend rounds are implemented. The modular-monolith boundary remains unchanged: PostgreSQL is the sole durable source of truth, Focus recommendations are deterministic/versioned, Execution uses append-only Events plus aggregate state, Analytics derives from immutable historical snapshots, and Operations provides privacy lifecycle, rate limiting and the PostgreSQL outbox.
 
-Round 4 adds Focus and Recommendations without changing the Work API's containment semantics.
+The API process and outbox worker use the same code/image. Production should deploy them as separate Koyeb Services; an embedded worker mode exists only to support one-service hobby/free deployments. Deploy-time Alembic migration is serialized with a PostgreSQL advisory lock, and readiness refuses traffic unless the database is at the release's expected revision.
+
+Cross-cutting production controls now include request IDs, structured JSON logging, trusted-host/CORS startup validation, security headers, stable Problem codes, OpenAPI authorization auditing and CI migration roundtrips.

@@ -40,17 +40,28 @@ jobs:
           enable-cache: true
       - name: Install dependencies
         run: uv sync --dev
+      - name: Compile
+        run: uv run python -m compileall -q src tests scripts alembic
       - name: Lint
         run: uv run ruff check .
       - name: Format check
         run: uv run ruff format --check .
       - name: Typecheck
         run: uv run pyright
-      - name: Migrations
-        run: uv run alembic upgrade head
+      - name: Migration roundtrip
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
       - name: Tests
         run: uv run pytest --cov=taskiller --cov-report=term-missing --cov-report=xml
       - name: Export OpenAPI
         run: PYTHONPATH=src uv run python scripts/export_openapi.py
+      - name: Release contract
+        run: PYTHONPATH=src uv run python scripts/release_check.py
+      - name: Require committed OpenAPI
+        run: git diff --exit-code -- openapi/current.json
       - name: Build container
         run: docker build -t taskiller-backend:ci .
+      - name: Import production image
+        run: docker run --rm taskiller-backend:ci python -c "import taskiller; print(taskiller.__version__)"

@@ -9,6 +9,6 @@ The backend is planned as **eight implementation rounds**. A round is a coherent
 5. **Execution engine — complete** — Sessions, append-only Events, one-open-session invariant, pause/resume/advance/complete/abandon, idempotency, cross-device conflicts and session reviews.
 6. **Analytics & personalization — complete** — duration derivation, estimate calibration, user/task/project summaries, time series, project rollups and historical signals fed back into recommendations.
 7. **Privacy & operations — complete** — data exports, deletion lifecycle, PostgreSQL outbox/worker, retention, rate limits, operational/security logging and recovery behavior.
-8. **Hardening & production release** — complete OpenAPI/problem catalog, authorization matrix, load/security tests, migrations audit, Koyeb/Neon production configuration, observability and end-to-end verification.
+8. **Hardening & production release — complete** — OpenAPI/problem catalog, authorization matrix, release checks, load/security tests, migration roundtrip, Koyeb/Neon configuration, observability and end-to-end verification.
 
 After Round 8, the backend is intended to be **v1 feature-complete independently of `taskiller-web`**. Future integrations such as social OAuth, notifications, calendar sync or Redis can be added without changing the core API architecture.

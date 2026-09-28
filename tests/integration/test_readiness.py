@@ -19,4 +19,10 @@ def test_readiness_against_postgres() -> None:
         response = client.get("/health/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "database": "ok"}
+    assert response.json() == {
+        "status": "ready",
+        "database": "ok",
+        "migration": "ok",
+        "expected_revision": "20260928_0006",
+        "current_revision": "20260928_0006",
+    }
