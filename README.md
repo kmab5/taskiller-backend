@@ -4,7 +4,7 @@ Client-independent backend for **Taskiller** — a task execution and focus syst
 
 ## Status
 
-**Round 4 complete: Focus & Recommendation Engine.**
+**Round 5 complete: Execution Engine.**
 
 Implemented so far:
 
@@ -36,8 +36,17 @@ Implemented so far:
 - editable Focus Plans with normalized ordered segments
 - reusable generic Focus Plan templates
 - Focus Plan ETags, soft deletion, pagination and idempotent creates
+- cross-device Execution Sessions with immutable Focus Plan snapshots
+- append-only Session Events and deterministic Session state transitions
+- authoritative timestamp-based timer reconstruction
+- pause/resume/segment/break/finish/abandon workflows
+- one-open-Session-per-user database invariant
+- exact event idempotency with original-result replay
+- Session ETags and stale-device conflict rejection
+- explicit WorkItem completion from execution
+- terminal Session reviews
 
-Round 5 will add the Execution Session and append-only event engine.
+Round 6 will add analytics and history-informed personalization.
 
 See:
 
@@ -46,6 +55,8 @@ See:
 - `docs/ROUND_2.md`
 - `docs/ROUND_3.md`
 - `docs/ROUND_4.md`
+- `docs/ROUND_5.md`
+- `docs/EXECUTION.md`
 - `docs/FOCUS.md`
 - `docs/WORK.md`
 - `docs/DEVELOPMENT_ROUNDS.md`
