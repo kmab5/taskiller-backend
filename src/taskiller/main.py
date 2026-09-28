@@ -7,12 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from taskiller import __version__
 from taskiller.api import health
 from taskiller.api.router import api_router
+from taskiller.auth.email import AuthEmailSender, DevelopmentLogEmailSender, SafeLogEmailSender
 from taskiller.core.config import Settings, get_settings
 from taskiller.core.logging import configure_logging
+from taskiller.core.problems import install_problem_handlers
 from taskiller.db.session import Database
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    email_sender: AuthEmailSender | None = None,
+) -> FastAPI:
     app_settings = settings or get_settings()
     configure_logging(app_settings.log_level)
     database = Database(app_settings)
@@ -34,7 +40,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = app_settings
     app.state.database = database
+    app.state.auth_email_sender = email_sender or (
+        SafeLogEmailSender() if app_settings.is_production else DevelopmentLogEmailSender()
+    )
 
+    install_problem_handlers(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=app_settings.cors_origins,

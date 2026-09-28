@@ -1,23 +1,44 @@
 # taskiller-backend
 
-Client-independent backend for **Taskiller** — a task execution and focus system built around Projects, Sprints, Chores, Focus Plans, Execution Sessions and evidence-informed recommendations.
+Client-independent backend for **Taskiller** — a task execution and focus system built around Projects, Sprints, Chores, Focus Plans, Execution Sessions, analytics, and evidence-informed recommendations.
 
 ## Status
 
-**Round 1: backend foundation.** Product endpoints are intentionally not implemented yet. The current app provides infrastructure, health probes and a reproducible structure for the domain rounds that follow.
+**Round 2 complete: Identity & Authentication.**
+
+Implemented so far:
+
+- FastAPI application/configuration foundation
+- async SQLAlchemy + psycopg/PostgreSQL integration
+- Alembic migrations
+- Docker/CI/health probes/OpenAPI export
+- users and versioned profile/preferences
+- Argon2id password hashing
+- short-lived JWT access credentials
+- opaque, HMAC-hashed, rotating refresh credentials
+- database-backed device sessions with immediate revocation
+- refresh-token replay detection and session-family revocation
+- email-verification and password-reset one-time token primitives
+- session listing/revocation and logout-all
+- RFC-style structured API errors
+- ETag/If-Match optimistic concurrency for user-owned mutable resources
+
+Round 3 will add the Work domain: Work Types, Projects, Sprints, Chores, hierarchy/state invariants, ordering and next-action queries.
 
 See:
 
 - `docs/ARCHITECTURE.md`
 - `docs/AUTH.md`
+- `docs/ROUND_2.md`
 - `docs/DEVELOPMENT_ROUNDS.md`
-- `openapi/planned-v1.yaml` — planned v1 API contract from the product planning package
+- `openapi/current.json` — OpenAPI generated from the implemented application
+- `openapi/planned-v1.yaml` — full v1 planning baseline
 
 ## Stack
 
-Python 3.14 · FastAPI · SQLAlchemy 2 · psycopg 3 · Alembic · PostgreSQL · Pydantic · pytest · Ruff · Pyright · uv · Docker
+Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 · psycopg 3 · Alembic · PostgreSQL · PyJWT · pwdlib/Argon2id · pytest · Ruff · Pyright · uv · Docker
 
-Production direction: **Koyeb API + Neon PostgreSQL**. Authentication is native to the FastAPI backend: Argon2id credentials, short-lived JWT access tokens and rotating opaque refresh sessions; see `docs/AUTH.md`.
+Production direction: **Koyeb API + Neon PostgreSQL**.
 
 ## Local setup
 
@@ -46,6 +67,8 @@ make test-integration
 make openapi
 ```
 
+`make test-integration` requires `TASKILLER_TEST_DATABASE_URL` and a database migrated to `head`. CI provisions PostgreSQL and runs the migration before the full test suite.
+
 ## Environment model
 
 - `local`
@@ -53,4 +76,4 @@ make openapi
 - `staging`
 - `production`
 
-Staging and production will use separate databases and secrets. Auth token keys, lifetimes and client origins are environment-configured.
+Staging and production use independent databases and secrets. The app refuses the development auth secrets in staging/production.

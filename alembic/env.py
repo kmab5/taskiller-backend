@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from taskiller.core.config import get_settings
 from taskiller.db.base import Base
+from taskiller.db import models as _models  # noqa: F401 - registers metadata
 
 config = context.config
 
