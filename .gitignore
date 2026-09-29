@@ -15,3 +15,8 @@ dist/
 .vscode/
 .idea/
 taskiller-ci-render-update
+apply_update.sh
+CURRENT_CI_FINDINGS.txt
+TASKILLER_RENDER_PRODUCTION_GUIDE.md
+verify_ci.sh
+patches/
