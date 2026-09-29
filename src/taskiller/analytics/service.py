@@ -271,9 +271,10 @@ class AnalyticsService:
                 if interval.category != "active_work" or interval.work_item_id is None:
                     continue
                 context = self._context_for(session, interval.work_item_id, history)
-                if self._context_in_scope(context, work_item_id):
-                    if first_started is None or interval.start < first_started:
-                        first_started = interval.start
+                if self._context_in_scope(context, work_item_id) and (
+                    first_started is None or interval.start < first_started
+                ):
+                    first_started = interval.start
 
         scoped_errors = []
         for completed_id, error in estimate_errors.items():

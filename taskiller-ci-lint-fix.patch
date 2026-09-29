@@ -1,0 +1,101 @@
+# Applies to kmab5/taskiller-backend main tree e1199d32a9c9d8a5d807ef6b8718e2b3b881606a (HEAD 1529ee1ae1f15be8c4eb41d220e820ffb02dabae as of 2026-09-29).
+# Apply from repository root with: git apply taskiller-ci-lint-fix.patch
+
+diff --git a/src/taskiller/analytics/service.py b/src/taskiller/analytics/service.py
+index 384f9cc..bb1756f 100644
+--- a/src/taskiller/analytics/service.py
++++ b/src/taskiller/analytics/service.py
+@@ -271,9 +271,10 @@ class AnalyticsService:
+                 if interval.category != "active_work" or interval.work_item_id is None:
+                     continue
+                 context = self._context_for(session, interval.work_item_id, history)
+-                if self._context_in_scope(context, work_item_id):
+-                    if first_started is None or interval.start < first_started:
+-                        first_started = interval.start
++                if self._context_in_scope(context, work_item_id) and (
++                    first_started is None or interval.start < first_started
++                ):
++                    first_started = interval.start
+ 
+         scoped_errors = []
+         for completed_id, error in estimate_errors.items():
+diff --git a/src/taskiller/execution/service.py b/src/taskiller/execution/service.py
+index ab15756..403751d 100644
+--- a/src/taskiller/execution/service.py
++++ b/src/taskiller/execution/service.py
+@@ -44,7 +44,7 @@ from taskiller.focus.models import (
+     FocusPlanModel,
+     FocusPlanRecommendationModel,
+ )
+-from taskiller.focus.schemas import FocusPlanSnapshot, FocusPlanSegmentInput, FocusSegmentKind
++from taskiller.focus.schemas import FocusPlanSegmentInput, FocusPlanSnapshot, FocusSegmentKind
+ from taskiller.users.etag import make_etag, require_etag
+ from taskiller.work.models import WorkItem, WorkType
+ from taskiller.work.schemas import WorkItemKind, WorkItemStatus
+diff --git a/src/taskiller/focus/schemas.py b/src/taskiller/focus/schemas.py
+index 0c24f34..34152bf 100644
+--- a/src/taskiller/focus/schemas.py
++++ b/src/taskiller/focus/schemas.py
+@@ -66,9 +66,11 @@ class FocusPlanSegmentInput(ApiModel):
+ 
+     @model_validator(mode="after")
+     def validate_duration_shape(self) -> Self:
+-        if self.duration_mode in {DurationMode.FIXED, DurationMode.FLEXIBLE}:
+-            if self.target_seconds is None:
+-                raise ValueError("fixed and flexible segments require targetSeconds")
++        if (
++            self.duration_mode in {DurationMode.FIXED, DurationMode.FLEXIBLE}
++            and self.target_seconds is None
++        ):
++            raise ValueError("fixed and flexible segments require targetSeconds")
+         if (
+             self.min_seconds is not None
+             and self.max_seconds is not None
+diff --git a/src/taskiller/main.py b/src/taskiller/main.py
+index 8c451d6..e269ff0 100644
+--- a/src/taskiller/main.py
++++ b/src/taskiller/main.py
+@@ -59,7 +59,7 @@ def create_app(
+                     with suppress(asyncio.CancelledError):
+                         await worker_task
+                     logger.warning("embedded_outbox_worker_cancelled_on_shutdown")
+-                except Exception:  # noqa: BLE001 - shutdown must still release database resources
++                except Exception:
+                     logger.exception("embedded_outbox_worker_failed")
+             await database.dispose()
+ 
+diff --git a/src/taskiller/operations/worker.py b/src/taskiller/operations/worker.py
+index 4c7758a..9161d9b 100644
+--- a/src/taskiller/operations/worker.py
++++ b/src/taskiller/operations/worker.py
+@@ -4,6 +4,7 @@ import argparse
+ import asyncio
+ import logging
+ import socket
++from contextlib import suppress
+ from datetime import timedelta
+ from uuid import UUID
+ 
+@@ -267,12 +268,10 @@ async def run_worker_loop(
+             if stop_event is None:
+                 await asyncio.sleep(settings.outbox_poll_seconds)
+             else:
+-                try:
++                with suppress(TimeoutError):
+                     await asyncio.wait_for(
+                         stop_event.wait(), timeout=settings.outbox_poll_seconds
+                     )
+-                except TimeoutError:
+-                    pass
+             continue
+         try:
+             async with database.session_factory() as db:
+@@ -283,7 +282,7 @@ async def run_worker_loop(
+                 await db.commit()
+             async with database.session_factory() as db:
+                 await finish_job(db, job.id)
+-        except Exception as exc:  # noqa: BLE001 - worker isolates job failures
++        except Exception as exc:
+             logger.exception("outbox job failed", extra={"job_id": str(job.id)})
+             async with database.session_factory() as db:
+                 await fail_job(db, job.id, settings, exc)

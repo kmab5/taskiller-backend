@@ -44,7 +44,7 @@ from taskiller.focus.models import (
     FocusPlanModel,
     FocusPlanRecommendationModel,
 )
-from taskiller.focus.schemas import FocusPlanSnapshot, FocusPlanSegmentInput, FocusSegmentKind
+from taskiller.focus.schemas import FocusPlanSegmentInput, FocusPlanSnapshot, FocusSegmentKind
 from taskiller.users.etag import make_etag, require_etag
 from taskiller.work.models import WorkItem, WorkType
 from taskiller.work.schemas import WorkItemKind, WorkItemStatus
