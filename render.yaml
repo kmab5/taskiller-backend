@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: taskiller-api
+    runtime: docker
+    plan: free
+    branch: main
+    healthCheckPath: /health/ready
+    envVars:
+      - key: TASKILLER_ENV
+        value: staging
+      - key: TASKILLER_LOG_LEVEL
+        value: INFO
+      - key: TASKILLER_DATABASE_URL
+        sync: false
+      - key: TASKILLER_JWT_SECRET
+        generateValue: true
+      - key: TASKILLER_TOKEN_HASH_SECRET
+        generateValue: true
+      - key: TASKILLER_EMAIL_DELIVERY_MODE
+        value: safe_log
+      - key: TASKILLER_CORS_ORIGINS
+        sync: false
+      - key: TASKILLER_ALLOWED_HOSTS
+        sync: false
+      - key: TASKILLER_TRUST_FORWARDED_FOR
+        value: true
+      - key: TASKILLER_REFRESH_COOKIE_SECURE
+        value: true
+      - key: TASKILLER_EMBEDDED_WORKER_ENABLED
+        value: true
