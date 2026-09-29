@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import logging
 import socket
+from contextlib import suppress
 from datetime import timedelta
 from uuid import UUID
 
@@ -267,12 +268,10 @@ async def run_worker_loop(
             if stop_event is None:
                 await asyncio.sleep(settings.outbox_poll_seconds)
             else:
-                try:
+                with suppress(TimeoutError):
                     await asyncio.wait_for(
                         stop_event.wait(), timeout=settings.outbox_poll_seconds
                     )
-                except TimeoutError:
-                    pass
             continue
         try:
             async with database.session_factory() as db:
@@ -283,7 +282,7 @@ async def run_worker_loop(
                 await db.commit()
             async with database.session_factory() as db:
                 await finish_job(db, job.id)
-        except Exception as exc:  # noqa: BLE001 - worker isolates job failures
+        except Exception as exc:
             logger.exception("outbox job failed", extra={"job_id": str(job.id)})
             async with database.session_factory() as db:
                 await fail_job(db, job.id, settings, exc)

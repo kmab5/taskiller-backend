@@ -59,7 +59,7 @@ def create_app(
                     with suppress(asyncio.CancelledError):
                         await worker_task
                     logger.warning("embedded_outbox_worker_cancelled_on_shutdown")
-                except Exception:  # noqa: BLE001 - shutdown must still release database resources
+                except Exception:
                     logger.exception("embedded_outbox_worker_failed")
             await database.dispose()
 

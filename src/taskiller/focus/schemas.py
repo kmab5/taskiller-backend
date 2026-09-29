@@ -66,9 +66,11 @@ class FocusPlanSegmentInput(ApiModel):
 
     @model_validator(mode="after")
     def validate_duration_shape(self) -> Self:
-        if self.duration_mode in {DurationMode.FIXED, DurationMode.FLEXIBLE}:
-            if self.target_seconds is None:
-                raise ValueError("fixed and flexible segments require targetSeconds")
+        if (
+            self.duration_mode in {DurationMode.FIXED, DurationMode.FLEXIBLE}
+            and self.target_seconds is None
+        ):
+            raise ValueError("fixed and flexible segments require targetSeconds")
         if (
             self.min_seconds is not None
             and self.max_seconds is not None
