@@ -68,8 +68,7 @@ def upgrade() -> None:
             name="ck_focus_plans_recommendation_source",
         ),
         sa.CheckConstraint(
-            "(source = 'template' AND is_template) OR "
-            "(source <> 'template' AND NOT is_template)",
+            "(source = 'template' AND is_template) OR (source <> 'template' AND NOT is_template)",
             name="ck_focus_plans_template_source",
         ),
         sa.CheckConstraint(
@@ -164,13 +163,9 @@ def upgrade() -> None:
             name="ck_focus_segments_nonwork_unlinked",
         ),
         sa.ForeignKeyConstraint(["focus_plan_id"], ["focus_plans.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["linked_work_item_id"], ["work_items.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["linked_work_item_id"], ["work_items.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "focus_plan_id", "segment_index", name="uq_focus_plan_segment_index"
-        ),
+        sa.UniqueConstraint("focus_plan_id", "segment_index", name="uq_focus_plan_segment_index"),
     )
 
 

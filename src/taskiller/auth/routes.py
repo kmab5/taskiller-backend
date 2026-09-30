@@ -162,9 +162,7 @@ async def refresh(
     return _auth_response(issued, request)
 
 
-@router.post(
-    "/logout", status_code=status.HTTP_204_NO_CONTENT, operation_id="logout"
-)
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, operation_id="logout")
 async def logout(
     request: Request,
     response: Response,
@@ -175,9 +173,7 @@ async def logout(
     _clear_refresh_cookie(response, request)
 
 
-@router.post(
-    "/logout-all", status_code=status.HTTP_204_NO_CONTENT, operation_id="logoutAll"
-)
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT, operation_id="logoutAll")
 async def logout_all(
     request: Request,
     response: Response,
@@ -188,9 +184,7 @@ async def logout_all(
     _clear_refresh_cookie(response, request)
 
 
-@router.get(
-    "/sessions", response_model=AuthSessionsResponse, operation_id="listAuthSessions"
-)
+@router.get("/sessions", response_model=AuthSessionsResponse, operation_id="listAuthSessions")
 async def list_sessions(db: DbSession, auth: CurrentAuth) -> AuthSessionsResponse:
     now = utc_now()
     rows = (

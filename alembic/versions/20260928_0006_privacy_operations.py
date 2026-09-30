@@ -113,7 +113,8 @@ def upgrade() -> None:
     op.create_index("ix_security_events_user_time", "security_events", ["user_id", "created_at"])
     op.create_index("ix_security_events_created", "security_events", ["created_at"])
 
-    op.execute(sa.text("""
+    op.execute(
+        sa.text("""
         CREATE OR REPLACE FUNCTION reject_security_event_mutation()
         RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
@@ -126,7 +127,8 @@ def upgrade() -> None:
         CREATE TRIGGER security_events_append_only
         BEFORE UPDATE OR DELETE ON security_events
         FOR EACH ROW EXECUTE FUNCTION reject_security_event_mutation();
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

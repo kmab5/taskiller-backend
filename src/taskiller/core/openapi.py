@@ -41,9 +41,7 @@ def install_openapi_contract(app: FastAPI, *, api_prefix: str) -> None:
         problem_response = {
             "description": "Taskiller problem response",
             "content": {
-                "application/problem+json": {
-                    "schema": {"$ref": "#/components/schemas/Problem"}
-                }
+                "application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}
             },
         }
         for path, path_item in schema.get("paths", {}).items():

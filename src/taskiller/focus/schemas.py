@@ -89,11 +89,15 @@ class FocusPlanSegmentInput(ApiModel):
             and self.target_seconds > self.max_seconds
         ):
             raise ValueError("targetSeconds cannot exceed maxSeconds")
-        if self.kind in {
-            FocusSegmentKind.BREAK,
-            FocusSegmentKind.LONG_BREAK,
-            FocusSegmentKind.TRANSITION,
-        } and self.linked_work_item_id is not None:
+        if (
+            self.kind
+            in {
+                FocusSegmentKind.BREAK,
+                FocusSegmentKind.LONG_BREAK,
+                FocusSegmentKind.TRANSITION,
+            }
+            and self.linked_work_item_id is not None
+        ):
             raise ValueError("break and transition segments cannot link a work item")
         return self
 
@@ -176,9 +180,7 @@ class CreateFocusPlanRequest(ApiModel):
 class UpdateFocusPlanRequest(ApiModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     template: bool | None = None
-    segments: list[FocusPlanSegmentInput] | None = Field(
-        default=None, min_length=1, max_length=100
-    )
+    segments: list[FocusPlanSegmentInput] | None = Field(default=None, min_length=1, max_length=100)
 
     @model_validator(mode="after")
     def validate_update(self) -> Self:

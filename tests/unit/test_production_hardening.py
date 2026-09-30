@@ -103,9 +103,9 @@ def test_openapi_has_default_problem_contract_and_complete_catalog() -> None:
 
     assert schema["components"]["schemas"]["Problem"]
     assert schema["x-taskiller-problem-codes"] == sorted(PROBLEM_CODES)
-    assert schema["paths"]["/api/v1/work-items"]["get"]["responses"]["default"][
-        "content"
-    ]["application/problem+json"]["schema"] == {"$ref": "#/components/schemas/Problem"}
+    assert schema["paths"]["/api/v1/work-items"]["get"]["responses"]["default"]["content"][
+        "application/problem+json"
+    ]["schema"] == {"$ref": "#/components/schemas/Problem"}
 
 
 def test_koyeb_forwarded_ip_uses_certified_last_entry() -> None:

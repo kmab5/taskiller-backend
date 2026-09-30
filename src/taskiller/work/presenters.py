@@ -61,10 +61,7 @@ def effective_characteristics(
 ) -> WorkCharacteristics | None:
     values: dict[str, str] = {}
     if work_type is not None:
-        values = {
-            field: str(getattr(work_type, field))
-            for field in _CHARACTERISTIC_FIELDS
-        }
+        values = {field: str(getattr(work_type, field)) for field in _CHARACTERISTIC_FIELDS}
     for field in _CHARACTERISTIC_FIELDS:
         override = getattr(work_item, f"{field}_override")
         if override is not None:

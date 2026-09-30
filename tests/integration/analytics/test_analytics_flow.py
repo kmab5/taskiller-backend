@@ -237,9 +237,7 @@ def test_analytics_endpoints_derive_historical_execution(client: TestClient) -> 
     assert body["requiredSegmentsCompleted"] == 1
     assert body["planAdherenceRate"] == 1.0
 
-    work_types = client.get(
-        "/api/v1/analytics/work-types", headers=_headers(access), params=params
-    )
+    work_types = client.get("/api/v1/analytics/work-types", headers=_headers(access), params=params)
     programming = next(
         item for item in work_types.json()["items"] if item["workTypeSlug"] == "programming"
     )
@@ -280,9 +278,7 @@ def test_personal_history_marks_recommendation_history_informed(client: TestClie
     access, user_id = _register(client)
     chore, plan, work_type = _create_chore_and_plan(client, access)
     for offset in range(5):
-        _seed_historical_session(
-            user_id, chore, plan, work_type, day_offset=offset
-        )
+        _seed_historical_session(user_id, chore, plan, work_type, day_offset=offset)
 
     recommendation = client.post(
         "/api/v1/focus-plan-recommendations",

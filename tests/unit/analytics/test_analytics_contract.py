@@ -79,11 +79,7 @@ def test_week_bucket_uses_public_sunday_zero_weekday_numbering() -> None:
     from taskiller.analytics.service import AnalyticsService
 
     wednesday = datetime(2026, 9, 30, 12, tzinfo=UTC)
-    monday = AnalyticsService._bucket_start(
-        wednesday, AnalyticsBucket.WEEK, ZoneInfo("UTC"), 1
-    )
-    sunday = AnalyticsService._bucket_start(
-        wednesday, AnalyticsBucket.WEEK, ZoneInfo("UTC"), 0
-    )
+    monday = AnalyticsService._bucket_start(wednesday, AnalyticsBucket.WEEK, ZoneInfo("UTC"), 1)
+    sunday = AnalyticsService._bucket_start(wednesday, AnalyticsBucket.WEEK, ZoneInfo("UTC"), 0)
     assert monday == datetime(2026, 9, 28, tzinfo=UTC)
     assert sunday == datetime(2026, 9, 27, tzinfo=UTC)

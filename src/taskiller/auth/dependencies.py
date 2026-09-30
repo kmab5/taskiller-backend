@@ -56,11 +56,7 @@ async def get_current_auth(
         raise unauthorized
     user, auth_session = row
     now: datetime = utc_now()
-    if (
-        not user.is_active
-        or auth_session.revoked_at is not None
-        or auth_session.expires_at <= now
-    ):
+    if not user.is_active or auth_session.revoked_at is not None or auth_session.expires_at <= now:
         raise unauthorized
     return AuthContext(claims=claims, user=user, auth_session=auth_session)
 

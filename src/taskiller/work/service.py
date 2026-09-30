@@ -508,8 +508,7 @@ class WorkService:
                 items.extend(grandchildren)
         item_responses = await self._item_responses(items)
         responses = {
-            item.id: response
-            for item, response in zip(items, item_responses, strict=True)
+            item.id: response for item, response in zip(items, item_responses, strict=True)
         }
         children: dict[UUID, list[WorkItem]] = defaultdict(list)
         for item in items[1:]:
@@ -760,9 +759,7 @@ class WorkService:
     ) -> int:
         await self._lock_sibling_namespace(parent_id)
         parent_filter = (
-            WorkItem.parent_id.is_(None)
-            if parent_id is None
-            else WorkItem.parent_id == parent_id
+            WorkItem.parent_id.is_(None) if parent_id is None else WorkItem.parent_id == parent_id
         )
         stmt = select(func.max(WorkItem.position)).where(
             WorkItem.owner_id == self.owner_id,
@@ -776,9 +773,7 @@ class WorkService:
 
     async def _lock_sibling_namespace(self, parent_id: UUID | None) -> None:
         if parent_id is None:
-            await self.db.execute(
-                select(User.id).where(User.id == self.owner_id).with_for_update()
-            )
+            await self.db.execute(select(User.id).where(User.id == self.owner_id).with_for_update())
             return
         await self.db.execute(
             select(WorkItem.id)
@@ -796,9 +791,7 @@ class WorkService:
         if work_type_ids:
             rows = list(
                 (
-                    await self.db.scalars(
-                        select(WorkType).where(WorkType.id.in_(work_type_ids))
-                    )
+                    await self.db.scalars(select(WorkType).where(WorkType.id.in_(work_type_ids)))
                 ).all()
             )
             work_types = {row.id: row for row in rows}

@@ -97,8 +97,7 @@ class WorkItem(Base):
             name="ck_work_items_priority",
         ),
         CheckConstraint(
-            "estimated_effort_seconds IS NULL OR "
-            "estimated_effort_seconds BETWEEN 0 AND 31536000",
+            "estimated_effort_seconds IS NULL OR estimated_effort_seconds BETWEEN 0 AND 31536000",
             name="ck_work_items_estimate",
         ),
         CheckConstraint(
@@ -192,9 +191,7 @@ class WorkItem(Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
-    parent_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("work_items.id", ondelete="RESTRICT")
-    )
+    parent_id: Mapped[UUID | None] = mapped_column(ForeignKey("work_items.id", ondelete="RESTRICT"))
     work_type_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("work_types.id", ondelete="SET NULL")
     )

@@ -179,6 +179,4 @@ def test_personal_history_can_shift_structured_block_target() -> None:
 
     work = [segment for segment in result.plan.segments if segment.kind is FocusSegmentKind.WORK]
     assert work[0].target_seconds == 65 * 60
-    assert any(
-        reason.code == "PERSONAL_COMPLETED_SESSION_PATTERN" for reason in result.reasons
-    )
+    assert any(reason.code == "PERSONAL_COMPLETED_SESSION_PATTERN" for reason in result.reasons)

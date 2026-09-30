@@ -133,9 +133,7 @@ class FocusService:
                             strategy=engine_preferences.strategy,
                             work_block_min_seconds=engine_preferences.work_block_min_seconds,
                             work_block_max_seconds=engine_preferences.work_block_max_seconds,
-                            personal_work_block_seconds=(
-                                personalization_signal.target_seconds
-                            ),
+                            personal_work_block_seconds=(personalization_signal.target_seconds),
                             personal_sample_size=personalization_signal.sample_size,
                         )
             effort = work_item.estimated_effort_seconds
@@ -375,9 +373,7 @@ class FocusService:
         has_more = len(rows) > limit
         rows = rows[:limit]
         next_cursor = (
-            self._encode_cursor(rows[-1].created_at, rows[-1].id)
-            if has_more and rows
-            else None
+            self._encode_cursor(rows[-1].created_at, rows[-1].id) if has_more and rows else None
         )
         return FocusPlanPage(
             items=[focus_plan_to_response(row) for row in rows],
@@ -521,9 +517,7 @@ class FocusService:
         target: WorkItem | None,
     ) -> None:
         linked_ids = {
-            segment.linked_work_item_id
-            for segment in segments
-            if segment.linked_work_item_id
+            segment.linked_work_item_id for segment in segments if segment.linked_work_item_id
         }
         if not linked_ids:
             return
@@ -563,8 +557,7 @@ class FocusService:
                 )
         else:
             if any(
-                row.kind != WorkItemKind.CHORE.value or row.parent_id != target.id
-                for row in rows
+                row.kind != WorkItemKind.CHORE.value or row.parent_id != target.id for row in rows
             ):
                 raise ApiError(
                     422,

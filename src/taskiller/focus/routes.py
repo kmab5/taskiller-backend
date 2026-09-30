@@ -142,9 +142,7 @@ async def update_focus_plan(
     auth: CurrentAuth,
     if_match: IfMatch = None,
 ) -> FocusPlan:
-    plan = await _service(request, db, auth).update_focus_plan(
-        focus_plan_id, payload, if_match
-    )
+    plan = await _service(request, db, auth).update_focus_plan(focus_plan_id, payload, if_match)
     _focus_plan_etag(response, plan)
     return plan
 

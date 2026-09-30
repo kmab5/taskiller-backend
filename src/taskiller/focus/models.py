@@ -67,8 +67,7 @@ class FocusPlanModel(Base):
             name="ck_focus_plans_recommendation_source",
         ),
         CheckConstraint(
-            "(source = 'template' AND is_template) OR "
-            "(source <> 'template' AND NOT is_template)",
+            "(source = 'template' AND is_template) OR (source <> 'template' AND NOT is_template)",
             name="ck_focus_plans_template_source",
         ),
         CheckConstraint(

@@ -78,9 +78,7 @@ def main() -> None:
     alembic = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
     heads = alembic.get_heads()
     if heads != [EXPECTED_DB_REVISION]:
-        errors.append(
-            f"Readiness expects {EXPECTED_DB_REVISION}, but Alembic heads are {heads}"
-        )
+        errors.append(f"Readiness expects {EXPECTED_DB_REVISION}, but Alembic heads are {heads}")
 
     operations = _operations(schema)
     operation_ids = [operation.get("operationId") for _, _, operation in operations]
@@ -103,10 +101,9 @@ def main() -> None:
         operation_id = operation["operationId"]
         if operation_id in _PUBLIC_OPERATIONS:
             continue
-        if (
-            path.startswith(settings.api_prefix)
-            and operation.get("security") != [{"bearerAuth": []}]
-        ):
+        if path.startswith(settings.api_prefix) and operation.get("security") != [
+            {"bearerAuth": []}
+        ]:
             errors.append(
                 f"Protected operation lost bearerAuth: {method.upper()} {path} ({operation_id})"
             )

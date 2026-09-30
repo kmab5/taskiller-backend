@@ -57,9 +57,9 @@ def test_round_two_operation_ids_are_stable_for_client_generation() -> None:
 
 
 def test_refresh_contract_documents_cookie_input_and_rotation_output() -> None:
-    operation = create_app(Settings(_env_file=None)).openapi()["paths"][
-        "/api/v1/auth/refresh"
-    ]["post"]
+    operation = create_app(Settings(_env_file=None)).openapi()["paths"]["/api/v1/auth/refresh"][
+        "post"
+    ]
     cookie = next(item for item in operation["parameters"] if item["in"] == "cookie")
 
     assert cookie["name"] == "taskiller_refresh"

@@ -127,9 +127,10 @@ def test_account_deletion_revokes_access_and_worker_hard_deletes_user() -> None:
             },
         )
         assert deleted.status_code == 202, deleted.text
-        assert client.get(
-            "/api/v1/me", headers={"Authorization": f"Bearer {access}"}
-        ).status_code == 401
+        assert (
+            client.get("/api/v1/me", headers={"Authorization": f"Bearer {access}"}).status_code
+            == 401
+        )
 
         asyncio.run(_process_one(settings))
 
@@ -140,10 +141,7 @@ def test_account_deletion_revokes_access_and_worker_hard_deletes_user() -> None:
             {"id": user_id},
         ).scalar_one()
         completed = connection.execute(
-            text(
-                "SELECT status FROM account_deletion_requests "
-                "WHERE user_id = CAST(:id AS uuid)"
-            ),
+            text("SELECT status FROM account_deletion_requests WHERE user_id = CAST(:id AS uuid)"),
             {"id": user_id},
         ).scalar_one()
     engine.dispose()

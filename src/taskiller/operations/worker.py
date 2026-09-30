@@ -56,10 +56,12 @@ async def ensure_retention_job(db: AsyncSession, settings: Settings) -> None:
     )
     existing = (
         await db.execute(
-            select(OutboxJob.id).where(
+            select(OutboxJob.id)
+            .where(
                 OutboxJob.job_type == "retention",
                 OutboxJob.status.in_(["queued", "running"]),
-            ).limit(1)
+            )
+            .limit(1)
         )
     ).scalar_one_or_none()
     if existing is None:
@@ -128,8 +130,7 @@ async def _run_retention(db: AsyncSession, settings: Settings) -> None:
     await db.execute(text("SET LOCAL taskiller.retention = 'on'"))
     await db.execute(
         delete(SecurityEvent).where(
-            SecurityEvent.created_at
-            <= now - timedelta(days=settings.security_event_retention_days)
+            SecurityEvent.created_at <= now - timedelta(days=settings.security_event_retention_days)
         )
     )
     await db.execute(
@@ -142,8 +143,7 @@ async def _run_retention(db: AsyncSession, settings: Settings) -> None:
     await db.execute(
         delete(OutboxJob).where(
             OutboxJob.status.in_(["succeeded", "dead"]),
-            OutboxJob.completed_at
-            <= now - timedelta(days=settings.outbox_history_retention_days),
+            OutboxJob.completed_at <= now - timedelta(days=settings.outbox_history_retention_days),
         )
     )
 
@@ -153,9 +153,7 @@ async def process_job(db: AsyncSession, job: OutboxJob, settings: Settings) -> N
         export_id = UUID(str(job.payload_json["exportRequestId"]))
         export = (
             await db.execute(
-                select(DataExportRequest)
-                .where(DataExportRequest.id == export_id)
-                .with_for_update()
+                select(DataExportRequest).where(DataExportRequest.id == export_id).with_for_update()
             )
         ).scalar_one_or_none()
         if export is None:
@@ -269,9 +267,7 @@ async def run_worker_loop(
                 await asyncio.sleep(settings.outbox_poll_seconds)
             else:
                 with suppress(TimeoutError):
-                    await asyncio.wait_for(
-                        stop_event.wait(), timeout=settings.outbox_poll_seconds
-                    )
+                    await asyncio.wait_for(stop_event.wait(), timeout=settings.outbox_poll_seconds)
             continue
         try:
             async with database.session_factory() as db:

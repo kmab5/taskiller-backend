@@ -124,9 +124,7 @@ def test_refresh_rotation_reuse_revokes_device_session(
 
     revoked = client.get("/api/v1/me", headers={"Authorization": f"Bearer {new_access}"})
     assert revoked.status_code == 401
-    after_reset = client.get(
-        "/api/v1/me", headers={"Authorization": f"Bearer {access}"}
-    )
+    after_reset = client.get("/api/v1/me", headers={"Authorization": f"Bearer {access}"})
     assert after_reset.status_code == 401
 
 
@@ -147,9 +145,7 @@ def test_password_reset_revokes_sessions_and_changes_password(
         json={"token": token, "newPassword": "a-new-very-long-password"},
     )
     assert confirm.status_code == 204
-    old_access = client.get(
-        "/api/v1/me", headers={"Authorization": f"Bearer {access}"}
-    )
+    old_access = client.get("/api/v1/me", headers={"Authorization": f"Bearer {access}"})
     assert old_access.status_code == 401
 
     old_login = client.post(
@@ -170,9 +166,7 @@ def test_device_sessions_can_be_revoked(
     client, _ = client_and_mailer
     access, _ = _register(client)
 
-    sessions = client.get(
-        "/api/v1/auth/sessions", headers={"Authorization": f"Bearer {access}"}
-    )
+    sessions = client.get("/api/v1/auth/sessions", headers={"Authorization": f"Bearer {access}"})
     assert sessions.status_code == 200
     item = sessions.json()["items"][0]
     assert item["current"] is True
@@ -182,9 +176,7 @@ def test_device_sessions_can_be_revoked(
         headers={"Authorization": f"Bearer {access}"},
     )
     assert revoked.status_code == 204
-    after_revoke = client.get(
-        "/api/v1/me", headers={"Authorization": f"Bearer {access}"}
-    )
+    after_revoke = client.get("/api/v1/me", headers={"Authorization": f"Bearer {access}"})
     assert after_revoke.status_code == 401
 
 

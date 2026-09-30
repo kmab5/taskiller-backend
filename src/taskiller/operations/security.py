@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _subject_hash(value: str, settings: Settings) -> str:
-    return hmac.new(
-        settings.token_hash_secret.encode(), value.encode(), hashlib.sha256
-    ).hexdigest()
+    return hmac.new(settings.token_hash_secret.encode(), value.encode(), hashlib.sha256).hexdigest()
 
 
 def request_subject(request: Request, extra: str = "") -> str:
@@ -110,4 +108,3 @@ async def record_security_event(
             await db.commit()
     except Exception:
         logger.exception("security audit event could not be persisted")
-

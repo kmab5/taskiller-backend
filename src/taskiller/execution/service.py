@@ -223,9 +223,7 @@ class ExecutionService:
             client_occurred_at=None,
             segment_index=0,
             idempotency_key=f"initial:{idempotency_key}"[:200],
-            request_hash=self._hash_payload(
-                {"type": initial_type.value, "segmentIndex": 0}
-            ),
+            request_hash=self._hash_payload({"type": initial_type.value, "segmentIndex": 0}),
             payload_json={},
             result_session_snapshot_json={},
             created_at=now,
@@ -388,9 +386,7 @@ class ExecutionService:
             idempotency_key=idempotency_key,
             request_hash=digest,
             payload_json=payload.payload,
-            result_session_snapshot_json=response_session.model_dump(
-                mode="json", by_alias=True
-            ),
+            result_session_snapshot_json=response_session.model_dump(mode="json", by_alias=True),
             created_at=now,
         )
         self.db.add(event)
@@ -430,9 +426,7 @@ class ExecutionService:
         has_more = len(rows) > limit
         rows = rows[:limit]
         next_cursor = (
-            self._encode_cursor(rows[-1].occurred_at, rows[-1].id)
-            if has_more and rows
-            else None
+            self._encode_cursor(rows[-1].occurred_at, rows[-1].id) if has_more and rows else None
         )
         return SessionEventPage(
             items=[session_event_to_response(row) for row in rows],
@@ -566,10 +560,7 @@ class ExecutionService:
         }:
             self._require_state(row, ExecutionSessionState.RUNNING)
             segment = self._require_current_segment(row, payload.segment_index)
-            if (
-                event_type is SessionEventType.SEGMENT_SKIPPED
-                and not bool(segment.get("optional"))
-            ):
+            if event_type is SessionEventType.SEGMENT_SKIPPED and not bool(segment.get("optional")):
                 raise self._invalid_event("only optional segments may be skipped")
             if (
                 event_type is not SessionEventType.SEGMENT_SKIPPED
@@ -578,10 +569,7 @@ class ExecutionService:
                 raise self._invalid_event("the current segment has not started")
             if event_type is SessionEventType.BREAK_ENDED and segment["kind"] not in _BREAK_KINDS:
                 raise self._invalid_event("break_ended requires the current segment to be a break")
-            if (
-                event_type is SessionEventType.SEGMENT_COMPLETED
-                and segment["kind"] in _BREAK_KINDS
-            ):
+            if event_type is SessionEventType.SEGMENT_COMPLETED and segment["kind"] in _BREAK_KINDS:
                 raise self._invalid_event("break segments must use break_ended")
             self._advance_segment(row)
             return
@@ -631,9 +619,8 @@ class ExecutionService:
             raise self._invalid_event("work item to complete was not found")
         if session_target.kind == WorkItemKind.CHORE.value and target.id != session_target.id:
             raise self._invalid_event("a Chore Session may only complete its own Chore")
-        if (
-            session_target.kind == WorkItemKind.SPRINT.value
-            and (target.kind != WorkItemKind.CHORE.value or target.parent_id != session_target.id)
+        if session_target.kind == WorkItemKind.SPRINT.value and (
+            target.kind != WorkItemKind.CHORE.value or target.parent_id != session_target.id
         ):
             raise self._invalid_event("a Sprint Session may only complete a direct child Chore")
         if target.status in {WorkItemStatus.CANCELLED.value, WorkItemStatus.ARCHIVED.value}:
@@ -701,9 +688,7 @@ class ExecutionService:
     ) -> dict[str, object]:
         all_items = list(
             (
-                await self.db.scalars(
-                    select(WorkItem).where(WorkItem.owner_id == self.owner_id)
-                )
+                await self.db.scalars(select(WorkItem).where(WorkItem.owner_id == self.owner_id))
             ).all()
         )
         item_by_id = {item.id: item for item in all_items}
@@ -721,9 +706,7 @@ class ExecutionService:
         if work_type_ids:
             rows = list(
                 (
-                    await self.db.scalars(
-                        select(WorkType).where(WorkType.id.in_(work_type_ids))
-                    )
+                    await self.db.scalars(select(WorkType).where(WorkType.id.in_(work_type_ids)))
                 ).all()
             )
             work_types = {row.id: row for row in rows}
@@ -739,11 +722,7 @@ class ExecutionService:
                 if parent is None:
                     break
                 parent_id = parent.parent_id
-            work_type = (
-                work_types.get(item.work_type_id)
-                if item.work_type_id is not None
-                else None
-            )
+            work_type = work_types.get(item.work_type_id) if item.work_type_id is not None else None
             return {
                 "id": str(item.id),
                 "kind": item.kind,
@@ -753,9 +732,7 @@ class ExecutionService:
                 "workTypeSlug": work_type.slug if work_type is not None else None,
                 "estimatedEffortSeconds": item.estimated_effort_seconds,
                 "plannedStartAt": (
-                    item.planned_start_at.isoformat()
-                    if item.planned_start_at is not None
-                    else None
+                    item.planned_start_at.isoformat() if item.planned_start_at is not None else None
                 ),
             }
 

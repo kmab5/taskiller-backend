@@ -104,13 +104,9 @@ def upgrade() -> None:
             name="ck_session_events_idempotency_length",
         ),
         sa.ForeignKeyConstraint(["owner_id"], ["users.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["session_id"], ["execution_sessions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["session_id"], ["execution_sessions.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "session_id", "idempotency_key", name="uq_session_events_idempotency"
-        ),
+        sa.UniqueConstraint("session_id", "idempotency_key", name="uq_session_events_idempotency"),
     )
     op.create_index(
         "ix_session_events_session_time",
@@ -158,9 +154,7 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("version >= 1", name="ck_session_reviews_version_positive"),
         sa.ForeignKeyConstraint(["owner_id"], ["users.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["session_id"], ["execution_sessions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["session_id"], ["execution_sessions.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("session_id"),
     )
 
@@ -307,27 +301,18 @@ def downgrade() -> None:
     op.execute(sa.text("DROP FUNCTION IF EXISTS reject_session_event_updates()"))
     op.execute(sa.text("DROP TRIGGER IF EXISTS session_reviews_validate_owner ON session_reviews"))
     op.execute(sa.text("DROP TRIGGER IF EXISTS session_events_validate_owner ON session_events"))
-    op.execute(
-        sa.text("DROP FUNCTION IF EXISTS validate_session_child_owner()")
-    )
+    op.execute(sa.text("DROP FUNCTION IF EXISTS validate_session_child_owner()"))
     op.execute(
         sa.text(
-            "DROP TRIGGER IF EXISTS execution_sessions_validate_references "
-            "ON execution_sessions"
+            "DROP TRIGGER IF EXISTS execution_sessions_validate_references ON execution_sessions"
         )
     )
-    op.execute(
-        sa.text("DROP FUNCTION IF EXISTS validate_execution_session_references()")
-    )
+    op.execute(sa.text("DROP FUNCTION IF EXISTS validate_execution_session_references()"))
     op.drop_table("session_reviews")
     op.drop_index("ix_session_events_owner_time", table_name="session_events")
     op.drop_index("ix_session_events_session_time", table_name="session_events")
     op.drop_table("session_events")
-    op.drop_index(
-        "ix_execution_sessions_work_item_started", table_name="execution_sessions"
-    )
+    op.drop_index("ix_execution_sessions_work_item_started", table_name="execution_sessions")
     op.drop_index("ix_execution_sessions_owner_started", table_name="execution_sessions")
-    op.drop_index(
-        "uq_execution_sessions_one_open_per_user", table_name="execution_sessions"
-    )
+    op.drop_index("uq_execution_sessions_one_open_per_user", table_name="execution_sessions")
     op.drop_table("execution_sessions")

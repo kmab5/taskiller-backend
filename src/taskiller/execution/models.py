@@ -28,9 +28,7 @@ class ExecutionSessionModel(Base):
             "state IN ('running', 'paused', 'completed', 'abandoned')",
             name="ck_execution_sessions_state",
         ),
-        CheckConstraint(
-            "current_segment_index >= 0", name="ck_execution_sessions_segment_index"
-        ),
+        CheckConstraint("current_segment_index >= 0", name="ck_execution_sessions_segment_index"),
         CheckConstraint("version >= 1", name="ck_execution_sessions_version_positive"),
         CheckConstraint(
             "(state IN ('completed', 'abandoned') AND ended_at IS NOT NULL) OR "

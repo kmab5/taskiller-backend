@@ -466,9 +466,7 @@ def generate_sprint_recommendation(
                         budget -= pause.target_seconds or 0
                     accumulated_work = 0
         flexible = strategy is RecommendationStrategy.FLEXIBLE
-        segments.append(
-            _work_segment(target, child.id, flexible=flexible, label=child.name)
-        )
+        segments.append(_work_segment(target, child.id, flexible=flexible, label=child.name))
         accumulated_work += target
         if budget is not None:
             budget -= target

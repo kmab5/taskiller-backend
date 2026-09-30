@@ -82,9 +82,7 @@ async def update_preferences(
 ) -> UserPreferencesResponse:
     preferences = (
         await db.execute(
-            select(UserPreferences)
-            .where(UserPreferences.user_id == auth.user.id)
-            .with_for_update()
+            select(UserPreferences).where(UserPreferences.user_id == auth.user.id).with_for_update()
         )
     ).scalar_one()
     current_etag = make_etag("preferences", auth.user.id, preferences.version)
@@ -110,7 +108,5 @@ async def update_preferences(
         preferences.updated_at = utc_now()
         await db.commit()
 
-    response.headers["ETag"] = make_etag(
-        "preferences", auth.user.id, preferences.version
-    )
+    response.headers["ETag"] = make_etag("preferences", auth.user.id, preferences.version)
     return preferences_to_response(preferences)

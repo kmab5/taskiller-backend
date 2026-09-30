@@ -94,9 +94,7 @@ class AuthService:
             created_at=now,
             updated_at=now,
         )
-        auth_session, refresh, refresh_row = self._build_auth_session(
-            user.id, device_name, now
-        )
+        auth_session, refresh, refresh_row = self._build_auth_session(user.id, device_name, now)
         self.db.add_all([user, preferences, auth_session, refresh_row])
         try:
             await self.db.commit()
@@ -307,9 +305,7 @@ class AuthService:
     async def request_password_reset(self, email_value: str) -> None:
         email = normalize_email(email_value)
         user = (
-            await self.db.execute(
-                select(User).where(User.email == email).with_for_update()
-            )
+            await self.db.execute(select(User).where(User.email == email).with_for_update())
         ).scalar_one_or_none()
         if user is None or not user.is_active:
             await self.db.rollback()
@@ -455,9 +451,7 @@ class AuthService:
     def _issue(
         self, user: User, auth_session: AuthSession, refresh_token: str
     ) -> IssuedCredentials:
-        access, access_expires = create_access_token(
-            user.id, auth_session.id, self.settings
-        )
+        access, access_expires = create_access_token(user.id, auth_session.id, self.settings)
         return IssuedCredentials(
             access_token=access,
             access_expires_at=access_expires,

@@ -16,9 +16,7 @@ def test_round_five_paths_and_operation_ids_are_stable() -> None:
             "post": "startExecutionSession",
         },
         "/api/v1/execution-sessions/active": {"get": "getActiveExecutionSession"},
-        "/api/v1/execution-sessions/{executionSessionId}": {
-            "get": "getExecutionSession"
-        },
+        "/api/v1/execution-sessions/{executionSessionId}": {"get": "getExecutionSession"},
         "/api/v1/execution-sessions/{executionSessionId}/events": {
             "get": "listExecutionSessionEvents",
             "post": "appendExecutionSessionEvent",

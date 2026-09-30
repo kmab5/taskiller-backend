@@ -178,9 +178,7 @@ class PasswordResetToken(Base):
 
 class IdempotencyRecord(Base):
     __tablename__ = "idempotency_records"
-    __table_args__ = (
-        Index("ix_idempotency_records_expiry", "expires_at"),
-    )
+    __table_args__ = (Index("ix_idempotency_records_expiry", "expires_at"),)
 
     owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True

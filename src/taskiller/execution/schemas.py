@@ -89,21 +89,29 @@ class CreateSessionEventRequest(ApiModel):
     def validate_shape(self) -> Self:
         if self.type is SessionEventType.SESSION_STARTED:
             raise ValueError("session_started is created by the session start endpoint")
-        if self.type in {
-            SessionEventType.SEGMENT_STARTED,
-            SessionEventType.SEGMENT_COMPLETED,
-            SessionEventType.SEGMENT_SKIPPED,
-            SessionEventType.BREAK_STARTED,
-            SessionEventType.BREAK_ENDED,
-        } and self.segment_index is None:
+        if (
+            self.type
+            in {
+                SessionEventType.SEGMENT_STARTED,
+                SessionEventType.SEGMENT_COMPLETED,
+                SessionEventType.SEGMENT_SKIPPED,
+                SessionEventType.BREAK_STARTED,
+                SessionEventType.BREAK_ENDED,
+            }
+            and self.segment_index is None
+        ):
             raise ValueError("segmentIndex is required for segment and break events")
-        if self.type not in {
-            SessionEventType.SEGMENT_STARTED,
-            SessionEventType.SEGMENT_COMPLETED,
-            SessionEventType.SEGMENT_SKIPPED,
-            SessionEventType.BREAK_STARTED,
-            SessionEventType.BREAK_ENDED,
-        } and self.segment_index is not None:
+        if (
+            self.type
+            not in {
+                SessionEventType.SEGMENT_STARTED,
+                SessionEventType.SEGMENT_COMPLETED,
+                SessionEventType.SEGMENT_SKIPPED,
+                SessionEventType.BREAK_STARTED,
+                SessionEventType.BREAK_ENDED,
+            }
+            and self.segment_index is not None
+        ):
             raise ValueError("segmentIndex is only valid for segment and break events")
         return self
 

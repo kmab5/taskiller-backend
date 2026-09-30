@@ -274,9 +274,7 @@ async def build_export_archive(
     export.failure_code = None
 
 
-async def hard_delete_account(
-    db: AsyncSession, request: AccountDeletionRequest
-) -> None:
+async def hard_delete_account(db: AsyncSession, request: AccountDeletionRequest) -> None:
     request.status = "processing"
     request.started_at = request.started_at or utc_now()
     await db.flush()

@@ -70,11 +70,7 @@ def test_window_clips_totals_but_not_full_uninterrupted_sample() -> None:
     metrics = derive_session_metrics(
         session_id=session_id,
         session_work_item_id=chore_id,
-        plan_snapshot={
-            "segments": [
-                {"kind": "work", "targetSeconds": 1200, "optional": False}
-            ]
-        },
+        plan_snapshot={"segments": [{"kind": "work", "targetSeconds": 1200, "optional": False}]},
         events=events,
         session_started_at=_at(0),
         ended_at=_at(20),
@@ -130,9 +126,7 @@ def test_open_session_is_derived_only_until_now() -> None:
     metrics = derive_session_metrics(
         session_id=session_id,
         session_work_item_id=chore_id,
-        plan_snapshot={
-            "segments": [{"kind": "work", "targetSeconds": 1800, "optional": False}]
-        },
+        plan_snapshot={"segments": [{"kind": "work", "targetSeconds": 1800, "optional": False}]},
         events=[
             EventRecord("session_started", start, None, {}),
             EventRecord("segment_started", start, 0, {}),

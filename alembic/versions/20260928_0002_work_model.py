@@ -327,8 +327,7 @@ def upgrade() -> None:
             name="ck_work_items_priority",
         ),
         sa.CheckConstraint(
-            "estimated_effort_seconds IS NULL OR "
-            "estimated_effort_seconds BETWEEN 0 AND 31536000",
+            "estimated_effort_seconds IS NULL OR estimated_effort_seconds BETWEEN 0 AND 31536000",
             name="ck_work_items_estimate",
         ),
         sa.CheckConstraint(

@@ -14,9 +14,7 @@ def main() -> None:
     engine = create_engine(settings.database_url, pool_pre_ping=True)
     try:
         with engine.connect() as connection:
-            connection.execute(
-                text("SELECT pg_advisory_lock(:key)"), {"key": _MIGRATION_LOCK_KEY}
-            )
+            connection.execute(text("SELECT pg_advisory_lock(:key)"), {"key": _MIGRATION_LOCK_KEY})
             connection.commit()
             try:
                 alembic_config = Config("alembic.ini")

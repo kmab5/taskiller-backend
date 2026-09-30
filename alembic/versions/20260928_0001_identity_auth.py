@@ -47,9 +47,7 @@ def upgrade() -> None:
         sa.Column("version", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint(
-            "week_starts_on BETWEEN 0 AND 6", name="ck_preferences_week_starts_on"
-        ),
+        sa.CheckConstraint("week_starts_on BETWEEN 0 AND 6", name="ck_preferences_week_starts_on"),
         sa.CheckConstraint("version >= 1", name="ck_preferences_version_positive"),
         sa.CheckConstraint(
             "preferred_strategy IN ('auto', 'continuous', 'structured', 'flexible')",
@@ -159,9 +157,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_password_reset_tokens_user_id", table_name="password_reset_tokens")
     op.drop_table("password_reset_tokens")
-    op.drop_index(
-        "ix_email_verification_tokens_user_id", table_name="email_verification_tokens"
-    )
+    op.drop_index("ix_email_verification_tokens_user_id", table_name="email_verification_tokens")
     op.drop_table("email_verification_tokens")
     op.drop_index("ix_refresh_tokens_session", table_name="refresh_tokens")
     op.drop_table("refresh_tokens")

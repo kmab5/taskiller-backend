@@ -96,9 +96,7 @@ def test_v1_release_end_to_end(client: TestClient) -> None:
 
     work_types = client.get("/api/v1/work-types", headers=_headers(access))
     assert work_types.status_code == 200
-    programming = next(
-        item for item in work_types.json()["items"] if item["slug"] == "programming"
-    )
+    programming = next(item for item in work_types.json()["items"] if item["slug"] == "programming")
 
     project = client.post(
         "/api/v1/work-items",

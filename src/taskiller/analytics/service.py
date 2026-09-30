@@ -206,9 +206,7 @@ class AnalyticsService:
                     median_uninterrupted_work_seconds=self._median_int(
                         intervals_by_key.get(key, [])
                     ),
-                    median_estimate_error_seconds=self._median_int(
-                        estimate_by_key.get(key, [])
-                    ),
+                    median_estimate_error_seconds=self._median_int(estimate_by_key.get(key, [])),
                     completion_rate=(
                         len(completed_by_key.get(key, set())) / terminal_count
                         if terminal_count
@@ -402,9 +400,7 @@ class AnalyticsService:
                 touched.add(key)
                 for part_start, part_end in self._split_by_hour(interval, zone):
                     hour = part_start.astimezone(zone).hour
-                    hour_active[hour] += max(
-                        0, round((part_end - part_start).total_seconds())
-                    )
+                    hour_active[hour] += max(0, round((part_end - part_start).total_seconds()))
                     hour_sessions[hour].add(session.id)
                     touched_hours.add(hour)
             full_metrics = full.get(session.id)
@@ -420,9 +416,7 @@ class AnalyticsService:
                         continue
                     context = self._context_for(session, interval.work_item_id, history)
                     slug = context.work_type_slug or "uncategorized"
-                    durations.setdefault((context.work_type_id, slug), []).append(
-                        interval.seconds
-                    )
+                    durations.setdefault((context.work_type_id, slug), []).append(interval.seconds)
             review = history.reviews.get(session.id)
             for key in touched:
                 sessions_by_key.setdefault(key, set()).add(session.id)
@@ -489,8 +483,7 @@ class AnalyticsService:
             (
                 item
                 for item in patterns.items
-                if item.work_type_id == work_type_id
-                and item.work_type_slug == work_type_slug
+                if item.work_type_id == work_type_id and item.work_type_slug == work_type_slug
             ),
             None,
         )
@@ -564,9 +557,7 @@ class AnalyticsService:
 
         work_item_rows = list(
             (
-                await self.db.scalars(
-                    select(WorkItem).where(WorkItem.owner_id == self.owner_id)
-                )
+                await self.db.scalars(select(WorkItem).where(WorkItem.owner_id == self.owner_id))
             ).all()
         )
         work_items = {row.id: row for row in work_item_rows}
@@ -698,9 +689,7 @@ class AnalyticsService:
             ancestor_ids=ancestors,
             work_type_id=UUID(str(raw_work_type)) if raw_work_type is not None else None,
             work_type_slug=(
-                str(value["workTypeSlug"])
-                if value.get("workTypeSlug") is not None
-                else None
+                str(value["workTypeSlug"]) if value.get("workTypeSlug") is not None else None
             ),
             estimated_effort_seconds=(
                 int(value["estimatedEffortSeconds"])
@@ -758,10 +747,7 @@ class AnalyticsService:
             if session is None:
                 continue
             context = self._context_for(session, work_item_id, history)
-            if (
-                context.kind != WorkItemKind.CHORE.value
-                or context.estimated_effort_seconds is None
-            ):
+            if context.kind != WorkItemKind.CHORE.value or context.estimated_effort_seconds is None:
                 continue
             actual = 0
             for metrics in full.values():
@@ -829,9 +815,7 @@ class AnalyticsService:
         self, history: LoadedHistory, work_item_id: UUID, before: datetime
     ) -> WorkContextEntry | None:
         candidates = [
-            session
-            for session in history.sessions
-            if session.session_started_at < before
+            session for session in history.sessions if session.session_started_at < before
         ]
         for session in reversed(candidates):
             snapshot = dict(session.work_context_snapshot_json or {})
