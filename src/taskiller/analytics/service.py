@@ -114,22 +114,20 @@ class AnalyticsService:
         ]
         planned, completed_segments = self._adherence_counts(history, ranged, start, end)
         return AnalyticsSummary(
-            **{
-                "from": start,
-                "to": end,
-                "activeWorkSeconds": active,
-                "breakSeconds": breaks,
-                "pausedSeconds": paused,
-                "sessionsCompleted": completed,
-                "sessionsAbandoned": abandoned,
-                "choresCompleted": len(completion_map),
-                "medianUninterruptedWorkSeconds": self._median_int(uninterrupted),
-                "medianEstimateErrorSeconds": self._median_int(list(estimate_errors.values())),
-                "medianStartDelaySeconds": self._median_int(start_delays),
-                "requiredSegmentsCompleted": completed_segments,
-                "requiredSegmentsPlanned": planned,
-                "planAdherenceRate": self._ratio(completed_segments, planned),
-            }
+            from_at=start,
+            to_at=end,
+            active_work_seconds=active,
+            break_seconds=breaks,
+            paused_seconds=paused,
+            sessions_completed=completed,
+            sessions_abandoned=abandoned,
+            chores_completed=len(completion_map),
+            median_uninterrupted_work_seconds=self._median_int(uninterrupted),
+            median_estimate_error_seconds=self._median_int(list(estimate_errors.values())),
+            median_start_delay_seconds=self._median_int(start_delays),
+            required_segments_completed=completed_segments,
+            required_segments_planned=planned,
+            plan_adherence_rate=self._ratio(completed_segments, planned),
         )
 
     async def work_types(self, from_at: datetime, to_at: datetime) -> WorkTypeAnalyticsList:
@@ -357,13 +355,11 @@ class AnalyticsService:
             if bucket_start < end.astimezone(zone)
         ]
         return AnalyticsTimeseries(
-            **{
-                "from": start,
-                "to": end,
-                "bucket": bucket,
-                "timezone": history.preferences.timezone,
-                "points": response_points,
-            }
+            from_at=start,
+            to_at=end,
+            bucket=bucket,
+            timezone=history.preferences.timezone,
+            points=response_points,
         )
 
     async def focus_patterns(self, from_at: datetime, to_at: datetime) -> FocusPatterns:
@@ -460,13 +456,11 @@ class AnalyticsService:
             for hour in range(24)
         ]
         return FocusPatterns(
-            **{
-                "from": start,
-                "to": end,
-                "timezone": history.preferences.timezone,
-                "items": items,
-                "timeOfDay": time_of_day,
-            }
+            from_at=start,
+            to_at=end,
+            timezone=history.preferences.timezone,
+            items=items,
+            time_of_day=time_of_day,
         )
 
     async def personalization_signal(

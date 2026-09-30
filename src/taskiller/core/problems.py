@@ -141,7 +141,7 @@ def install_problem_handlers(app: FastAPI) -> None:
                         "loc": item.get("loc"),
                         "msg": item.get("msg"),
                     }
-                    for item in exc.errors(include_url=False)
+                    for item in exc.errors()
                 ]
             },
         )

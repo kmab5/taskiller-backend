@@ -44,7 +44,12 @@ from taskiller.focus.models import (
     FocusPlanModel,
     FocusPlanRecommendationModel,
 )
-from taskiller.focus.schemas import FocusPlanSegmentInput, FocusPlanSnapshot, FocusSegmentKind
+from taskiller.focus.schemas import (
+    DurationMode,
+    FocusPlanSegmentInput,
+    FocusPlanSnapshot,
+    FocusSegmentKind,
+)
 from taskiller.users.etag import make_etag, require_etag
 from taskiller.work.models import WorkItem, WorkType
 from taskiller.work.schemas import WorkItemKind, WorkItemStatus
@@ -754,8 +759,8 @@ class ExecutionService:
     def _snapshot_plan(focus_plan: FocusPlanModel) -> FocusPlanSnapshot:
         segments = [
             FocusPlanSegmentInput(
-                kind=segment.kind,
-                duration_mode=segment.duration_mode,
+                kind=FocusSegmentKind(segment.kind),
+                duration_mode=DurationMode(segment.duration_mode),
                 target_seconds=segment.target_seconds,
                 min_seconds=segment.min_seconds,
                 max_seconds=segment.max_seconds,

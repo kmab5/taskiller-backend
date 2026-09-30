@@ -1,5 +1,5 @@
 from taskiller.db.models import User, UserPreferences
-from taskiller.users.schemas import UserPreferencesResponse, UserResponse
+from taskiller.users.schemas import PreferredStrategy, UserPreferencesResponse, UserResponse
 
 
 def user_to_response(user: User) -> UserResponse:
@@ -19,7 +19,7 @@ def preferences_to_response(preferences: UserPreferences) -> UserPreferencesResp
         timezone=preferences.timezone,
         locale=preferences.locale,
         week_starts_on=preferences.week_starts_on,
-        preferred_strategy=preferences.preferred_strategy,
+        preferred_strategy=PreferredStrategy(preferences.preferred_strategy),
         preferred_work_block_min_seconds=preferences.preferred_work_block_min_seconds,
         preferred_work_block_max_seconds=preferences.preferred_work_block_max_seconds,
         show_review_prompt=preferences.show_review_prompt,

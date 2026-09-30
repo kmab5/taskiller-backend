@@ -25,10 +25,21 @@ class BuildMetadata:
 
 def build_metadata() -> BuildMetadata:
     return BuildMetadata(
-        release_sha=os.getenv("TASKILLER_RELEASE_SHA") or os.getenv("KOYEB_GIT_SHA"),
-        release_branch=os.getenv("TASKILLER_RELEASE_BRANCH") or os.getenv("KOYEB_GIT_BRANCH"),
-        release_repository=os.getenv("TASKILLER_RELEASE_REPOSITORY")
-        or os.getenv("KOYEB_GIT_REPOSITORY"),
+        release_sha=(
+            os.getenv("TASKILLER_RELEASE_SHA")
+            or os.getenv("RENDER_GIT_COMMIT")
+            or os.getenv("KOYEB_GIT_SHA")
+        ),
+        release_branch=(
+            os.getenv("TASKILLER_RELEASE_BRANCH")
+            or os.getenv("RENDER_GIT_BRANCH")
+            or os.getenv("KOYEB_GIT_BRANCH")
+        ),
+        release_repository=(
+            os.getenv("TASKILLER_RELEASE_REPOSITORY")
+            or os.getenv("RENDER_GIT_REPO_SLUG")
+            or os.getenv("KOYEB_GIT_REPOSITORY")
+        ),
     )
 
 
@@ -36,8 +47,8 @@ def request_client_ip(request: Request, settings: Settings) -> str:
     if settings.trust_forwarded_for:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            # Koyeb appends the connecting client address and documents the final entry as trusted.
-            candidate = forwarded.rsplit(",", 1)[-1].strip()
+            # Render places the real client address first in X-Forwarded-For.
+            candidate = forwarded.split(",", 1)[0].strip()
             if candidate:
                 return candidate[:100]
     return (request.client.host if request.client is not None else "unknown")[:100]

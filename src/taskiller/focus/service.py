@@ -431,8 +431,9 @@ class FocusService:
         if row is None:
             raise self._not_found("focus_plan_not_found", "Focus Plan not found")
         require_etag(if_match, make_etag("focus-plan", row.id, row.version))
-        row.deleted_at = utc_now()
-        row.updated_at = row.deleted_at
+        deleted_at = utc_now()
+        row.deleted_at = deleted_at
+        row.updated_at = deleted_at
         row.version += 1
         await self.db.commit()
 

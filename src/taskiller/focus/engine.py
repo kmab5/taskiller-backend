@@ -78,19 +78,19 @@ def _work_segment(
         spread = min(10 * 60, max(2 * 60, seconds // 6))
         return FocusPlanSegmentInput(
             kind=FocusSegmentKind.WORK,
-            durationMode=DurationMode.FLEXIBLE,
-            targetSeconds=seconds,
-            minSeconds=max(60, seconds - spread),
-            maxSeconds=min(86_400, seconds + spread),
-            linkedWorkItemId=linked_work_item_id,
+            duration_mode=DurationMode.FLEXIBLE,
+            target_seconds=seconds,
+            min_seconds=max(60, seconds - spread),
+            max_seconds=min(86_400, seconds + spread),
+            linked_work_item_id=linked_work_item_id,
             optional=False,
             label=label,
         )
     return FocusPlanSegmentInput(
         kind=FocusSegmentKind.WORK,
-        durationMode=DurationMode.FIXED,
-        targetSeconds=seconds,
-        linkedWorkItemId=linked_work_item_id,
+        duration_mode=DurationMode.FIXED,
+        target_seconds=seconds,
+        linked_work_item_id=linked_work_item_id,
         optional=False,
         label=label,
     )
@@ -100,10 +100,10 @@ def _break_segment(*, long: bool = False) -> FocusPlanSegmentInput:
     target = _LONG_BREAK_SECONDS if long else _DEFAULT_BREAK_SECONDS
     return FocusPlanSegmentInput(
         kind=FocusSegmentKind.LONG_BREAK if long else FocusSegmentKind.BREAK,
-        durationMode=DurationMode.FLEXIBLE,
-        targetSeconds=target,
-        minSeconds=5 * 60,
-        maxSeconds=20 * 60 if long else 10 * 60,
+        duration_mode=DurationMode.FLEXIBLE,
+        target_seconds=target,
+        min_seconds=5 * 60,
+        max_seconds=20 * 60 if long else 10 * 60,
         optional=True,
         label="Long recovery" if long else "Recovery break",
         instructions="Step away from the task; light movement is optional.",
@@ -345,19 +345,19 @@ def _study_segments(
     segments = [
         FocusPlanSegmentInput(
             kind=first_kind,
-            durationMode=DurationMode.FLEXIBLE,
-            targetSeconds=first,
-            minSeconds=max(5 * 60, first - 5 * 60),
-            maxSeconds=min(86_400, first + 5 * 60),
-            linkedWorkItemId=work_item_id,
+            duration_mode=DurationMode.FLEXIBLE,
+            target_seconds=first,
+            min_seconds=max(5 * 60, first - 5 * 60),
+            max_seconds=min(86_400, first + 5 * 60),
+            linked_work_item_id=work_item_id,
             optional=False,
             label=first_label,
         ),
         FocusPlanSegmentInput(
             kind=FocusSegmentKind.RETRIEVAL,
-            durationMode=DurationMode.FIXED,
-            targetSeconds=retrieval,
-            linkedWorkItemId=work_item_id,
+            duration_mode=DurationMode.FIXED,
+            target_seconds=retrieval,
+            linked_work_item_id=work_item_id,
             optional=False,
             label="Closed-book retrieval",
             instructions=(
@@ -372,10 +372,10 @@ def _study_segments(
             segments.append(
                 FocusPlanSegmentInput(
                     kind=FocusSegmentKind.BREAK,
-                    durationMode=DurationMode.FLEXIBLE,
-                    targetSeconds=break_seconds,
-                    minSeconds=5 * 60,
-                    maxSeconds=10 * 60,
+                    duration_mode=DurationMode.FLEXIBLE,
+                    target_seconds=break_seconds,
+                    min_seconds=5 * 60,
+                    max_seconds=10 * 60,
                     optional=True,
                     label="Recovery break",
                 )
@@ -384,11 +384,11 @@ def _study_segments(
         segments.append(
             FocusPlanSegmentInput(
                 kind=FocusSegmentKind.REVIEW,
-                durationMode=DurationMode.FLEXIBLE,
-                targetSeconds=remaining,
-                minSeconds=max(60, remaining - min(5 * 60, remaining // 4)),
-                maxSeconds=min(86_400, remaining + min(5 * 60, remaining // 4)),
-                linkedWorkItemId=work_item_id,
+                duration_mode=DurationMode.FLEXIBLE,
+                target_seconds=remaining,
+                min_seconds=max(60, remaining - min(5 * 60, remaining // 4)),
+                max_seconds=min(86_400, remaining + min(5 * 60, remaining // 4)),
+                linked_work_item_id=work_item_id,
                 optional=False,
                 label="Practice / review",
             )
@@ -450,8 +450,8 @@ def generate_sprint_recommendation(
                     segments.append(
                         FocusPlanSegmentInput(
                             kind=FocusSegmentKind.TRANSITION,
-                            durationMode=DurationMode.FIXED,
-                            targetSeconds=transition,
+                            duration_mode=DurationMode.FIXED,
+                            target_seconds=transition,
                             optional=True,
                             label="Switch context",
                         )

@@ -3,7 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -61,7 +61,7 @@ async def enqueue_job(
     *,
     job_type: str,
     payload: dict[str, object],
-    available_at=None,
+    available_at: datetime | None = None,
     max_attempts: int = 5,
 ) -> OutboxJob:
     now = utc_now()

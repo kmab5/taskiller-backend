@@ -96,7 +96,7 @@ See:
 
 Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 · psycopg 3 · Alembic · PostgreSQL · PyJWT · pwdlib/Argon2id · pytest · Ruff · Pyright · uv · Docker
 
-Production direction: **Koyeb API + Neon PostgreSQL**.
+Production direction: **Render Web Service + Neon PostgreSQL**.
 
 ## Local setup
 

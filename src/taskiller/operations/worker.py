@@ -6,6 +6,7 @@ import logging
 import socket
 from contextlib import suppress
 from datetime import timedelta
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import delete, select, text, update
@@ -47,7 +48,7 @@ async def recover_expired_leases(db: AsyncSession) -> int:
         )
     )
     await db.commit()
-    return int(result.rowcount or 0)
+    return int(cast(Any, result).rowcount or 0)
 
 
 async def ensure_retention_job(db: AsyncSession, settings: Settings) -> None:

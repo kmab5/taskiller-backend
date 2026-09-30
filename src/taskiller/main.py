@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
@@ -37,7 +37,7 @@ def create_app(
     database = Database(app_settings)
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         worker_stop: asyncio.Event | None = None
         worker_task: asyncio.Task[None] | None = None
         if app_settings.embedded_worker_enabled:

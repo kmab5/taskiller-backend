@@ -1,10 +1,12 @@
 from taskiller.focus.models import FocusPlanModel, FocusPlanRecommendationModel
 from taskiller.focus.schemas import (
+    DurationMode,
     FocusPlan,
     FocusPlanRecommendation,
     FocusPlanSegment,
     FocusPlanSnapshot,
     FocusPlanSource,
+    FocusSegmentKind,
     RecommendationProvenance,
     RecommendationReason,
 )
@@ -36,8 +38,8 @@ def focus_plan_to_response(row: FocusPlanModel) -> FocusPlan:
             FocusPlanSegment(
                 id=segment.id,
                 index=segment.segment_index,
-                kind=segment.kind,
-                duration_mode=segment.duration_mode,
+                kind=FocusSegmentKind(segment.kind),
+                duration_mode=DurationMode(segment.duration_mode),
                 target_seconds=segment.target_seconds,
                 min_seconds=segment.min_seconds,
                 max_seconds=segment.max_seconds,

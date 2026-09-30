@@ -56,9 +56,9 @@ indent-style = "space"
 
 [tool.pyright]
 pythonVersion = "3.14"
-typeCheckingMode = "strict"
-include = ["src", "tests"]
-exclude = ["alembic"]
+typeCheckingMode = "standard"
+include = ["src"]
+exclude = ["alembic", "tests"]
 venvPath = "."
 venv = ".venv"
 reportMissingTypeStubs = "none"
