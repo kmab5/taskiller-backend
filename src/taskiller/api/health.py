@@ -9,7 +9,7 @@ from taskiller import __version__
 from taskiller.core.runtime import build_metadata
 
 router = APIRouter(prefix="/health", tags=["Operations"])
-EXPECTED_DB_REVISION = "20260928_0006"
+EXPECTED_DB_REVISION = "20260930_0007"
 
 
 class HealthResponse(BaseModel):

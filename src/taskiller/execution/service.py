@@ -199,6 +199,8 @@ class ExecutionService:
             ) from exc
 
         await self._move_work_item_to_in_progress(work_item, now)
+        response = execution_session_to_response(row)
+        snapshot = response.model_dump(mode="json", by_alias=True)
         start_event = SessionEventModel(
             id=uuid4(),
             session_id=row.id,
@@ -210,7 +212,7 @@ class ExecutionService:
             idempotency_key=f"start:{idempotency_key}"[:200],
             request_hash=self._hash_payload({"type": "session_started"}),
             payload_json={},
-            result_session_snapshot_json={},
+            result_session_snapshot_json=snapshot,
             created_at=now,
         )
         initial_kind = plan_snapshot.segments[0].kind
@@ -230,15 +232,11 @@ class ExecutionService:
             idempotency_key=f"initial:{idempotency_key}"[:200],
             request_hash=self._hash_payload({"type": initial_type.value, "segmentIndex": 0}),
             payload_json={},
-            result_session_snapshot_json={},
+            result_session_snapshot_json=snapshot,
             created_at=now,
         )
         self.db.add_all([start_event, initial_event])
         await self.db.flush()
-        response = execution_session_to_response(row)
-        snapshot = response.model_dump(mode="json", by_alias=True)
-        start_event.result_session_snapshot_json = snapshot
-        initial_event.result_session_snapshot_json = snapshot
         await complete_idempotency(
             self.db,
             owner_id=self.owner_id,
