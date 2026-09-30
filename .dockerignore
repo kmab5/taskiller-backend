@@ -8,5 +8,4 @@ __pycache__
 .pyright
 coverage.xml
 htmlcov
-README.md
 docs

@@ -7,9 +7,9 @@ ENV UV_COMPILE_BYTECODE=1 \
 RUN pip install --no-cache-dir "uv>=0.12,<0.13"
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-RUN uv sync --no-dev --no-editable
+RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.14.7-slim AS runtime
 
