@@ -20,3 +20,4 @@ CURRENT_CI_FINDINGS.txt
 TASKILLER_RENDER_PRODUCTION_GUIDE.md
 verify_ci.sh
 patches/
+apply_incremental_update.py

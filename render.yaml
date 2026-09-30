@@ -7,24 +7,55 @@ services:
     healthCheckPath: /health/ready
     envVars:
       - key: TASKILLER_ENV
-        value: staging
-      - key: TASKILLER_LOG_LEVEL
-        value: INFO
+        value: production
+
       - key: TASKILLER_DATABASE_URL
         sync: false
+
       - key: TASKILLER_JWT_SECRET
         generateValue: true
+
       - key: TASKILLER_TOKEN_HASH_SECRET
         generateValue: true
+
+      - key: TASKILLER_EMBEDDED_WORKER_ENABLED
+        value: "true"
+
       - key: TASKILLER_EMAIL_DELIVERY_MODE
-        value: safe_log
+        value: smtp
+
+      - key: TASKILLER_SMTP_HOST
+        sync: false
+
+      - key: TASKILLER_SMTP_PORT
+        value: "587"
+
+      - key: TASKILLER_SMTP_USERNAME
+        sync: false
+
+      - key: TASKILLER_SMTP_PASSWORD
+        sync: false
+
+      - key: TASKILLER_SMTP_FROM_EMAIL
+        sync: false
+
+      - key: TASKILLER_SMTP_STARTTLS
+        value: "true"
+
       - key: TASKILLER_CORS_ORIGINS
         sync: false
+
       - key: TASKILLER_ALLOWED_HOSTS
         sync: false
+
       - key: TASKILLER_TRUST_FORWARDED_FOR
-        value: true
+        value: "true"
+
       - key: TASKILLER_REFRESH_COOKIE_SECURE
-        value: true
-      - key: TASKILLER_EMBEDDED_WORKER_ENABLED
-        value: true
+        value: "true"
+
+      - key: TASKILLER_REFRESH_COOKIE_SAMESITE
+        value: none
+
+      - key: TASKILLER_LOG_LEVEL
+        value: INFO
