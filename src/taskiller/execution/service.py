@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID, uuid4
 
@@ -165,6 +165,7 @@ class ExecutionService:
         plan_snapshot = self._snapshot_plan(focus_plan)
         work_context_snapshot = await self._snapshot_work_context(work_item, focus_plan)
         now = utc_now()
+        initial_segment_at = now + timedelta(microseconds=1)
         row = ExecutionSessionModel(
             id=uuid4(),
             owner_id=self.owner_id,
@@ -174,7 +175,7 @@ class ExecutionService:
             state=ExecutionSessionState.RUNNING.value,
             current_segment_index=0,
             session_started_at=now,
-            current_segment_started_at=now,
+            current_segment_started_at=initial_segment_at,
             paused_at=None,
             ended_at=None,
             plan_snapshot_json=plan_snapshot.model_dump(mode="json", by_alias=True),
@@ -226,7 +227,7 @@ class ExecutionService:
             session_id=row.id,
             owner_id=self.owner_id,
             type=initial_type.value,
-            occurred_at=now,
+            occurred_at=initial_segment_at,
             client_occurred_at=None,
             segment_index=0,
             idempotency_key=f"initial:{idempotency_key}"[:200],

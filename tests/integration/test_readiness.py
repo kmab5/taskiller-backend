@@ -3,6 +3,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+from taskiller.api.health import EXPECTED_DB_REVISION
 from taskiller.core.config import Settings
 from taskiller.main import create_app
 
@@ -23,6 +24,6 @@ def test_readiness_against_postgres() -> None:
         "status": "ready",
         "database": "ok",
         "migration": "ok",
-        "expected_revision": "20260928_0006",
-        "current_revision": "20260928_0006",
+        "expected_revision": EXPECTED_DB_REVISION,
+        "current_revision": EXPECTED_DB_REVISION,
     }
