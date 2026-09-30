@@ -196,10 +196,11 @@ class AuthService:
             revoked_at=None,
             replaced_by_id=None,
         )
+        self.db.add(replacement)
+        await self.db.flush()
         current.rotated_at = now
         current.replaced_by_id = replacement.id
         auth_session.last_used_at = now
-        self.db.add(replacement)
         await self.db.commit()
         return self._issue(user, auth_session, replacement_plain)
 

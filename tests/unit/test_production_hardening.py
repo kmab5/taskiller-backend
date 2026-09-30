@@ -108,7 +108,7 @@ def test_openapi_has_default_problem_contract_and_complete_catalog() -> None:
     ]["schema"] == {"$ref": "#/components/schemas/Problem"}
 
 
-def test_koyeb_forwarded_ip_uses_certified_last_entry() -> None:
+def test_render_forwarded_ip_uses_first_entry() -> None:
     settings = Settings(_env_file=None, env="test", trust_forwarded_for=True)
     app = FastAPI()
 
@@ -117,6 +117,9 @@ def test_koyeb_forwarded_ip_uses_certified_last_entry() -> None:
         return {"ip": request_client_ip(request, settings)}
 
     with TestClient(app, client=("10.0.0.5", 12345)) as client:
-        response = client.get("/", headers={"X-Forwarded-For": "spoofed, 198.51.100.25"})
+        response = client.get(
+            "/",
+            headers={"X-Forwarded-For": "198.51.100.25, 10.0.0.5"},
+        )
 
     assert response.json() == {"ip": "198.51.100.25"}

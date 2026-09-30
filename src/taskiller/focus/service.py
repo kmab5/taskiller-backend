@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -304,7 +304,9 @@ class FocusService:
         target = await self._validate_plan_target(work_item_id)
         await self._validate_segments(payload.segments, target)
         now = utc_now()
+        focus_plan_id = uuid4()
         row = FocusPlanModel(
+            id=focus_plan_id,
             owner_id=self.owner_id,
             work_item_id=work_item_id,
             recommendation_id=payload.recommendation_id,
@@ -315,10 +317,9 @@ class FocusService:
             created_at=now,
             updated_at=now,
             version=1,
+            segments=self._segment_rows(focus_plan_id, payload.segments),
         )
         self.db.add(row)
-        await self.db.flush()
-        row.segments = self._segment_rows(row.id, payload.segments)
         await self.db.flush()
         response = focus_plan_to_response(row)
         await complete_idempotency(
