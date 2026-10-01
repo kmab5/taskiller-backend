@@ -19,6 +19,7 @@ class EmailDeliveryMode(StrEnum):
     DEVELOPMENT_LOG = "development_log"
     SAFE_LOG = "safe_log"
     SMTP = "smtp"
+    RESEND = "resend"
 
 
 class Settings(BaseSettings):
@@ -55,6 +56,12 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_starttls: bool = True
     smtp_timeout_seconds: float = Field(default=10.0, ge=1.0, le=60.0)
+
+    web_app_url: str = "http://localhost:5173"
+    resend_api_key: str | None = None
+    resend_from_email: str | None = None
+    resend_api_url: str = "https://api.resend.com"
+    resend_timeout_seconds: float = Field(default=10.0, ge=1.0, le=60.0)
 
     jwt_secret: str = "change-me-in-local-development"
     token_hash_secret: str = "change-me-in-local-development-token-hash"
@@ -122,12 +129,24 @@ class Settings(BaseSettings):
                     "A strong TASKILLER_TOKEN_HASH_SECRET is required outside local/test"
                 )
             if self.env is Environment.PRODUCTION:
-                if self.email_delivery_mode is not EmailDeliveryMode.SMTP:
-                    raise ValueError("Production requires TASKILLER_EMAIL_DELIVERY_MODE=smtp")
-                if not self.smtp_host or not self.smtp_from_email:
-                    raise ValueError("Production SMTP requires host and from email")
-                if bool(self.smtp_username) != bool(self.smtp_password):
-                    raise ValueError("SMTP username and password must be configured together")
+                if self.email_delivery_mode is EmailDeliveryMode.SMTP:
+                    if not self.smtp_host or not self.smtp_from_email:
+                        raise ValueError("Production SMTP requires host and from email")
+                    if bool(self.smtp_username) != bool(self.smtp_password):
+                        raise ValueError("SMTP username and password must be configured together")
+                elif self.email_delivery_mode is EmailDeliveryMode.RESEND:
+                    if not self.resend_api_key or not self.resend_from_email:
+                        raise ValueError("Production Resend requires API key and from email")
+                    resend_url = urlparse(self.resend_api_url)
+                    if resend_url.scheme != "https" or not resend_url.netloc:
+                        raise ValueError("TASKILLER_RESEND_API_URL must be an absolute HTTPS URL")
+                else:
+                    raise ValueError(
+                        "Production requires TASKILLER_EMAIL_DELIVERY_MODE=smtp or resend"
+                    )
+                web_url = urlparse(self.web_app_url)
+                if web_url.scheme not in {"http", "https"} or not web_url.netloc:
+                    raise ValueError("TASKILLER_WEB_APP_URL must be an absolute HTTP(S) URL")
             if "*" in self.cors_origins:
                 raise ValueError("Wildcard CORS origins are forbidden outside local/test")
             if "*" in self.allowed_hosts:

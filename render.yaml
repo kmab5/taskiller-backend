@@ -22,25 +22,16 @@ services:
         value: "true"
 
       - key: TASKILLER_EMAIL_DELIVERY_MODE
-        value: smtp
+        value: resend
 
-      - key: TASKILLER_SMTP_HOST
+      - key: TASKILLER_WEB_APP_URL
+        value: https://taskiller-web.vercel.app
+
+      - key: TASKILLER_RESEND_API_KEY
         sync: false
 
-      - key: TASKILLER_SMTP_PORT
-        value: "587"
-
-      - key: TASKILLER_SMTP_USERNAME
+      - key: TASKILLER_RESEND_FROM_EMAIL
         sync: false
-
-      - key: TASKILLER_SMTP_PASSWORD
-        sync: false
-
-      - key: TASKILLER_SMTP_FROM_EMAIL
-        sync: false
-
-      - key: TASKILLER_SMTP_STARTTLS
-        value: "true"
 
       - key: TASKILLER_CORS_ORIGINS
         sync: false

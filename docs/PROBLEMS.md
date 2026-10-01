@@ -25,6 +25,7 @@ The OpenAPI document contains the canonical `Problem` schema and `x-taskiller-pr
 auth_session_not_found
 data_export_not_found
 email_already_registered
+email_delivery_unavailable
 empty_focus_plan
 focus_plan_source_conflict
 focus_plan_template_unexecutable
