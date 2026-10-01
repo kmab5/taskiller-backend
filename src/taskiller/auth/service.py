@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import logging
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -29,6 +30,8 @@ from taskiller.db.models import (
     User,
     UserPreferences,
 )
+
+logger = logging.getLogger(__name__)
 
 _DUMMY_PASSWORD_HASH = password_hasher.hash("taskiller-dummy-password-not-a-user")
 
@@ -262,7 +265,19 @@ class AuthService:
         plain, row = self._build_email_verification(locked_user.id, now)
         self.db.add(row)
         await self.db.commit()
-        await self.email_sender.send_email_verification(locked_user.email, plain)
+        try:
+            await self.email_sender.send_email_verification(locked_user.email, plain)
+        except Exception as exc:
+            logger.exception(
+                "email_verification_delivery_failed",
+                extra={"user_id": str(locked_user.id)},
+            )
+            raise ApiError(
+                503,
+                "email_delivery_unavailable",
+                "Email delivery unavailable",
+                "Taskiller could not reach the configured email provider. Try again later.",
+            ) from exc
 
     async def confirm_email_verification(self, token: str) -> None:
         now = utc_now()
@@ -331,7 +346,19 @@ class AuthService:
         )
         self.db.add(row)
         await self.db.commit()
-        await self.email_sender.send_password_reset(user.email, plain)
+        try:
+            await self.email_sender.send_password_reset(user.email, plain)
+        except Exception as exc:
+            logger.exception(
+                "password_reset_delivery_failed",
+                extra={"user_id": str(user.id)},
+            )
+            raise ApiError(
+                503,
+                "email_delivery_unavailable",
+                "Email delivery unavailable",
+                "Taskiller could not reach the configured email provider. Try again later.",
+            ) from exc
 
     async def confirm_password_reset(self, token: str, new_password: str) -> None:
         # Perform expensive Argon2 work before acquiring row locks.
