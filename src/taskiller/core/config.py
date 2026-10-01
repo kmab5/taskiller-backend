@@ -19,7 +19,7 @@ class EmailDeliveryMode(StrEnum):
     DEVELOPMENT_LOG = "development_log"
     SAFE_LOG = "safe_log"
     SMTP = "smtp"
-    RESEND = "resend"
+    MAILJET = "mailjet"
 
 
 class Settings(BaseSettings):
@@ -58,10 +58,12 @@ class Settings(BaseSettings):
     smtp_timeout_seconds: float = Field(default=10.0, ge=1.0, le=60.0)
 
     web_app_url: str = "http://localhost:5173"
-    resend_api_key: str | None = None
-    resend_from_email: str | None = None
-    resend_api_url: str = "https://api.resend.com"
-    resend_timeout_seconds: float = Field(default=10.0, ge=1.0, le=60.0)
+    mailjet_api_key: str | None = None
+    mailjet_secret_key: str | None = None
+    mailjet_from_email: str | None = None
+    mailjet_from_name: str = "Taskiller"
+    mailjet_api_url: str = "https://api.mailjet.com/v3.1/send"
+    mailjet_timeout_seconds: float = Field(default=10.0, ge=1.0, le=60.0)
 
     jwt_secret: str = "change-me-in-local-development"
     token_hash_secret: str = "change-me-in-local-development-token-hash"
@@ -134,15 +136,21 @@ class Settings(BaseSettings):
                         raise ValueError("Production SMTP requires host and from email")
                     if bool(self.smtp_username) != bool(self.smtp_password):
                         raise ValueError("SMTP username and password must be configured together")
-                elif self.email_delivery_mode is EmailDeliveryMode.RESEND:
-                    if not self.resend_api_key or not self.resend_from_email:
-                        raise ValueError("Production Resend requires API key and from email")
-                    resend_url = urlparse(self.resend_api_url)
-                    if resend_url.scheme != "https" or not resend_url.netloc:
-                        raise ValueError("TASKILLER_RESEND_API_URL must be an absolute HTTPS URL")
+                elif self.email_delivery_mode is EmailDeliveryMode.MAILJET:
+                    if (
+                        not self.mailjet_api_key
+                        or not self.mailjet_secret_key
+                        or not self.mailjet_from_email
+                    ):
+                        raise ValueError(
+                            "Production Mailjet requires API key, secret key, and from email"
+                        )
+                    mailjet_url = urlparse(self.mailjet_api_url)
+                    if mailjet_url.scheme != "https" or not mailjet_url.netloc:
+                        raise ValueError("TASKILLER_MAILJET_API_URL must be an absolute HTTPS URL")
                 else:
                     raise ValueError(
-                        "Production requires TASKILLER_EMAIL_DELIVERY_MODE=smtp or resend"
+                        "Production requires TASKILLER_EMAIL_DELIVERY_MODE=smtp or mailjet"
                     )
                 web_url = urlparse(self.web_app_url)
                 if web_url.scheme not in {"http", "https"} or not web_url.netloc:

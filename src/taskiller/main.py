@@ -13,7 +13,7 @@ from taskiller.api.router import api_router
 from taskiller.auth.email import (
     AuthEmailSender,
     DevelopmentLogEmailSender,
-    ResendEmailSender,
+    MailjetEmailSender,
     SafeLogEmailSender,
     SMTPEmailSender,
 )
@@ -80,8 +80,8 @@ def create_app(
         app.state.auth_email_sender = email_sender
     elif app_settings.email_delivery_mode is EmailDeliveryMode.SMTP:
         app.state.auth_email_sender = SMTPEmailSender(app_settings)
-    elif app_settings.email_delivery_mode is EmailDeliveryMode.RESEND:
-        app.state.auth_email_sender = ResendEmailSender(app_settings)
+    elif app_settings.email_delivery_mode is EmailDeliveryMode.MAILJET:
+        app.state.auth_email_sender = MailjetEmailSender(app_settings)
     elif app_settings.email_delivery_mode is EmailDeliveryMode.SAFE_LOG:
         app.state.auth_email_sender = SafeLogEmailSender()
     else:

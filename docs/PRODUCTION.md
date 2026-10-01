@@ -1,106 +1,97 @@
-# Production Deployment — Koyeb + Neon
+# Production Deployment — Render + Neon + Vercel
 
-This is the supported v1 deployment target.
-
-## Topology
+Taskiller's current zero-cost deployment topology is:
 
 ```text
-Internet
-   |
-Koyeb edge/TLS
-   |
-Taskiller Web Service  ---->  Neon pooled PostgreSQL
-   |
-   +---- optional embedded outbox worker (free/hobby only)
-
-Paid/production:
-Taskiller Worker Service ---> same Neon database
+Browser / installed PWA
+        |
+        v
+Vercel — taskiller-web
+        |
+        | HTTPS REST API
+        v
+Render Free — taskiller-api
+        | \
+        |  \ HTTPS
+        |   -> Mailjet Send API v3.1
+        v
+Neon — PostgreSQL
 ```
 
-Use **Frankfurt (`fra`)** when serving primarily Türkiye/Europe unless measurements justify another region. Keep Neon in a nearby European region as well.
-
-## Neon
-
-Use the **pooled** Neon connection string (`-pooler` in the endpoint host). Neon currently fronts pooled connections with PgBouncer in transaction mode. Taskiller also keeps a deliberately small client-side SQLAlchemy pool; defaults are `pool_size=5`, `max_overflow=5` and are configurable.
-
-Set the complete SQLAlchemy/psycopg URL as `TASKILLER_DATABASE_URL`, preserving Neon's TLS parameters.
-
-## Koyeb Web Service
+## Render API
 
 Deploy `kmab5/taskiller-backend` from GitHub using the repository `Dockerfile`.
 
-- Service type: Web
-- Port: `8000` (Koyeb also provides `PORT`; the container honors it)
-- Public route: `/`
-- Health check: HTTP `/health/ready`
-- Region: Frankfurt for the initial deployment
-- Build method: Dockerfile
+- Runtime: Docker
+- Plan: Free
+- Branch: `main`
+- Health check: `/health/ready`
+- Embedded worker: enabled for the one-service free deployment
 
-Required production environment values include:
+Required production environment values:
 
 ```text
 TASKILLER_ENV=production
 TASKILLER_DATABASE_URL=<Neon pooled SQLAlchemy/psycopg URL>
-TASKILLER_JWT_SECRET=<independent >=32-byte secret>
-TASKILLER_TOKEN_HASH_SECRET=<different independent >=32-byte secret>
-TASKILLER_EMAIL_DELIVERY_MODE=smtp
-TASKILLER_SMTP_HOST=<provider SMTP host>
-TASKILLER_SMTP_PORT=587
-TASKILLER_SMTP_USERNAME=<provider username if required>
-TASKILLER_SMTP_PASSWORD=<provider password if required>
-TASKILLER_SMTP_FROM_EMAIL=Taskiller <noreply@your-domain>
-TASKILLER_CORS_ORIGINS=["https://<taskiller-web-host>"]
-TASKILLER_ALLOWED_HOSTS=["<api-host>"]
+TASKILLER_JWT_SECRET=<independent strong secret>
+TASKILLER_TOKEN_HASH_SECRET=<different independent strong secret>
+
+TASKILLER_EMAIL_DELIVERY_MODE=mailjet
+TASKILLER_WEB_APP_URL=https://taskiller-web.vercel.app
+TASKILLER_MAILJET_API_KEY=<Mailjet public API key>
+TASKILLER_MAILJET_SECRET_KEY=<Mailjet private/secret API key>
+TASKILLER_MAILJET_FROM_EMAIL=<verified Mailjet sender address>
+TASKILLER_MAILJET_FROM_NAME=Taskiller
+
+TASKILLER_CORS_ORIGINS=["https://taskiller-web.vercel.app"]
+TASKILLER_ALLOWED_HOSTS=["taskiller-api-ukwf.onrender.com"]
 TASKILLER_TRUST_FORWARDED_FOR=true
+
+TASKILLER_REFRESH_COOKIE_SECURE=true
+TASKILLER_REFRESH_COOKIE_SAMESITE=none
+TASKILLER_EMBEDDED_WORKER_ENABLED=true
+```
+
+Keep all provider keys and authentication secrets only in Render environment variables.
+
+## Mailjet
+
+Taskiller uses Mailjet's HTTPS Send API v3.1 rather than SMTP. The sender must be an active sender address in the Mailjet account attached to the configured API key.
+
+The backend sends:
+
+- email-verification links to `/verify-email?token=...`
+- password-reset links to `/reset-password?token=...`
+
+`TASKILLER_WEB_APP_URL` controls the public frontend origin used in those links.
+
+A Gmail sender address can be activated in Mailjet without owning its domain, but Gmail's SPF/DKIM records cannot be changed by the Taskiller operator. That is acceptable for initial development and small-scale testing but can reduce deliverability compared with a future custom domain.
+
+## Neon
+
+Use the pooled Neon connection string (`-pooler` endpoint where applicable) as `TASKILLER_DATABASE_URL`.
+
+## Refresh cookie
+
+Vercel and Render are cross-site hosts, so production uses:
+
+```text
+TASKILLER_REFRESH_COOKIE_SAMESITE=none
 TASKILLER_REFRESH_COOKIE_SECURE=true
 ```
 
-If the web client is hosted on a different **site** (not merely a different subdomain of the same registrable domain), the refresh cookie must use `TASKILLER_REFRESH_COOKIE_SAMESITE=none` together with `TASKILLER_REFRESH_COOKIE_SECURE=true`. Prefer same-site custom domains such as `app.example.com` + `api.example.com` when possible.
+## Embedded worker
 
-Generate each auth secret independently, e.g. `openssl rand -hex 32`. Production startup rejects non-SMTP email mode so verification/password-reset endpoints cannot silently accept work that will never be delivered.
-
-Koyeb sets `KOYEB_GIT_SHA`, `KOYEB_GIT_BRANCH` and `KOYEB_GIT_REPOSITORY` for Git deployments. `/health/version` surfaces these values for release diagnosis.
-
-## Worker modes
-
-### Free/hobby Koyeb
-
-As of 2026-09-28, Koyeb allows one Free Instance per organization, the free instance is Web-Service-only, and it scales to zero after one hour without traffic. Set:
+Render Free only runs the web service. Keep:
 
 ```text
 TASKILLER_EMBEDDED_WORKER_ENABLED=true
 ```
 
-This is acceptable for development/hobby use but **not an SLA-quality production topology**. A sleeping free Web Service cannot wake itself merely because an outbox job becomes due; the next incoming request wakes it and background processing resumes.
-
-### Production
-
-Use a second Koyeb **Worker** Service from the same image/repository and set the API to:
-
-```text
-TASKILLER_EMBEDDED_WORKER_ENABLED=false
-```
-
-Override the Worker command to:
-
-```sh
-sh -c 'python scripts/migrate.py && exec python -m taskiller.operations.worker'
-```
-
-Both services may run the migration launcher because its PostgreSQL advisory lock serializes migration execution.
+The embedded worker processes data exports, account deletion, and retention work while the API instance is awake.
 
 ## Health
 
-- `/health/live`: process liveness only.
-- `/health/ready`: PostgreSQL reachable **and** Alembic revision equals the release's expected revision.
-- `/health/version`: version and deployment commit metadata.
-
-Configure Koyeb's HTTP health check against `/health/ready`, not `/health/live`, so an instance with a stale schema never receives traffic.
-
-## Platform references
-
-- Koyeb health checks: https://www.koyeb.com/docs/run-and-scale/health-checks
-- Koyeb edge headers/TLS: https://www.koyeb.com/docs/reference/edge-network
-- Koyeb free instance limits: https://www.koyeb.com/docs/reference/instances
-- Koyeb Git deployment: https://www.koyeb.com/docs/build-and-deploy/deploy-with-git
-- Neon PgBouncer/pooled connections: https://neon.com/blog/pgbouncer-the-one-with-prepared-statements
+- `/health/live` — process liveness
+- `/health/ready` — PostgreSQL reachable and schema at the expected Alembic revision
+- `/health/version` — build version and deployment metadata

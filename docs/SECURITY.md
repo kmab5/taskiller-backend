@@ -6,7 +6,7 @@
 - Short-lived signed access JWTs.
 - Opaque rotating refresh credentials, stored only as keyed hashes.
 - Refresh-token reuse revokes the device session family.
-- Access authorization checks the server-side session on every protected request, so logout/revocation is immediate rather than waiting for JWT expiration.
+- Access authorization checks the server-side session on every protected request.
 - Password reset revokes existing sessions.
 
 ## HTTP boundary
@@ -28,16 +28,18 @@
 
 ## Proxy/IP trust
 
-Koyeb documents that it appends the connecting client IP to `x-forwarded-for` and that the **last** entry is the one it can certify. `TASKILLER_TRUST_FORWARDED_FOR=true` therefore uses only the final entry. Leave this setting false when not behind a trusted proxy with equivalent semantics.
+Production runs behind Render. `TASKILLER_TRUST_FORWARDED_FOR=true` allows the runtime middleware to use the forwarded client-address chain supplied by the trusted deployment proxy. Leave this disabled when running behind an untrusted or unknown proxy.
 
 ## Authentication email
 
-Production requires a real SMTP transport. SMTP delivery runs off the event loop using a worker thread and never logs one-time tokens. Staging may intentionally use the token-free safe-log sink; local development can use the development sink that exposes tokens.
+Production requires a real delivery transport. The recommended zero-cost Render setup uses Mailjet Send API v3.1 over HTTPS. API credentials remain server-side only and one-time authentication tokens are never logged in production. Provider errors are normalized to `email_delivery_unavailable`.
+
+SMTP remains available as an alternative transport for environments where outbound SMTP is allowed.
 
 ## Secret handling
 
-Never commit production secrets. Use Koyeb Secrets/environment variables. JWT signing and token-HMAC secrets must be independent. Data exports exclude password hashes, token hashes, one-time auth tokens, rate-limit state and job internals.
+Never commit production secrets. Store JWT/token-HMAC secrets and Mailjet credentials in Render's environment configuration. JWT signing and token-HMAC secrets must be independent. Data exports exclude password hashes, token hashes, one-time auth tokens, rate-limit state, and job internals.
 
 ## Remaining operational responsibility
 
-Application security does not replace database backups, secret rotation, dependency updates, DNS/TLS configuration, least-privilege Koyeb/Neon accounts, or incident monitoring. Those are release operations, not API features.
+Application security does not replace database backups, secret rotation, dependency updates, DNS/TLS configuration, least-privilege provider accounts, or incident monitoring.

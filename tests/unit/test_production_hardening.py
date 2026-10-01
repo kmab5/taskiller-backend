@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from taskiller.auth.email import ResendEmailSender, SMTPEmailSender
+from taskiller.auth.email import MailjetEmailSender, SMTPEmailSender
 from taskiller.core.config import Settings
 from taskiller.core.problems import PROBLEM_CODES
 from taskiller.core.runtime import request_client_ip
@@ -64,7 +64,7 @@ def test_production_app_selects_smtp_sender() -> None:
     assert isinstance(app.state.auth_email_sender, SMTPEmailSender)
 
 
-def test_production_app_selects_resend_sender() -> None:
+def test_production_app_selects_mailjet_sender() -> None:
     settings = Settings(
         _env_file=None,
         env="production",
@@ -73,16 +73,18 @@ def test_production_app_selects_resend_sender() -> None:
         ),
         jwt_secret="j" * 64,
         token_hash_secret="t" * 64,
-        email_delivery_mode="resend",
-        resend_api_key="re_test_key",
-        resend_from_email="Taskiller <noreply@taskiller.example>",
+        email_delivery_mode="mailjet",
+        mailjet_api_key="public-key",
+        mailjet_secret_key="secret-key",
+        mailjet_from_email="taskiller.sender@gmail.com",
+        mailjet_from_name="Taskiller",
         web_app_url="https://taskiller.example",
         cors_origins=["https://taskiller.example"],
         allowed_hosts=["api.taskiller.example"],
     )
     app = create_app(settings)
 
-    assert isinstance(app.state.auth_email_sender, ResendEmailSender)
+    assert isinstance(app.state.auth_email_sender, MailjetEmailSender)
 
 
 def test_request_id_and_security_headers_are_added() -> None:
