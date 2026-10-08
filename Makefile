@@ -1,10 +1,10 @@
-.PHONY: install dev lint format format-check typecheck compile test test-integration check db-up db-down migrate openapi release-check load-smoke
+.PHONY: install dev lint format format-check typecheck compile test check migrate release-check phase10-audit worker
 
 install:
 	uv sync --dev
 
 dev:
-	uv run uvicorn taskiller.main:app --app-dir src --reload --host 0.0.0.0 --port 8000
+	PYTHONPATH=src uv run python manage.py runserver 0.0.0.0:8000
 
 lint:
 	uv run ruff check .
@@ -19,30 +19,23 @@ typecheck:
 	uv run pyright
 
 compile:
-	uv run python -m compileall -q src tests scripts alembic
+	uv run python -m compileall -q src tests scripts manage.py
 
 test:
-	uv run pytest -m "not integration"
-
-test-integration:
-	uv run pytest -m integration
-
-check: compile lint format-check typecheck test release-check
-
-db-up:
-	docker compose up -d postgres
-
-db-down:
-	docker compose down
+	uv run pytest
 
 migrate:
-	PYTHONPATH=src uv run python scripts/migrate.py
+	PYTHONPATH=src uv run python manage.py migrate
 
-openapi:
-	PYTHONPATH=src uv run python scripts/export_openapi.py
+worker:
+	PYTHONPATH=src uv run python manage.py taskiller_worker
 
-release-check: openapi
+release-check:
 	PYTHONPATH=src uv run python scripts/release_check.py
 
-load-smoke:
-	PYTHONPATH=src uv run python scripts/load_smoke.py --base-url http://localhost:8000
+phase10-audit:
+	PYTHONPATH=src uv run python scripts/django_phase10_final_audit.py
+	PYTHONPATH=src uv run python scripts/django_phase9_baseline_audit.py
+	PYTHONPATH=src uv run python scripts/django_phase9_production_smoke.py
+
+check: compile lint format-check typecheck test release-check phase10-audit

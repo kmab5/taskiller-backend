@@ -1,4 +1,7 @@
-from taskiller.work.models import WorkItem, WorkType
+from __future__ import annotations
+
+from typing import Any
+
 from taskiller.work.schemas import (
     IntensityLevel,
     LearningMode,
@@ -21,7 +24,7 @@ _CHARACTERISTIC_FIELDS = (
 )
 
 
-def characteristics_from_work_type(work_type: WorkType) -> WorkCharacteristics:
+def characteristics_from_work_type(work_type: Any) -> WorkCharacteristics:
     return WorkCharacteristics(
         cognitive_demand=IntensityLevel(work_type.cognitive_demand),
         interruption_sensitivity=IntensityLevel(work_type.interruption_sensitivity),
@@ -32,7 +35,7 @@ def characteristics_from_work_type(work_type: WorkType) -> WorkCharacteristics:
     )
 
 
-def work_type_to_response(work_type: WorkType) -> WorkTypeResponse:
+def work_type_to_response(work_type: Any) -> WorkTypeResponse:
     return WorkTypeResponse(
         id=work_type.id,
         slug=work_type.slug,
@@ -44,7 +47,7 @@ def work_type_to_response(work_type: WorkType) -> WorkTypeResponse:
     )
 
 
-def work_item_overrides(work_item: WorkItem) -> PartialWorkCharacteristics | None:
+def work_item_overrides(work_item: Any) -> PartialWorkCharacteristics | None:
     values = {
         field: getattr(work_item, f"{field}_override")
         for field in _CHARACTERISTIC_FIELDS
@@ -56,8 +59,8 @@ def work_item_overrides(work_item: WorkItem) -> PartialWorkCharacteristics | Non
 
 
 def effective_characteristics(
-    work_item: WorkItem,
-    work_type: WorkType | None,
+    work_item: Any,
+    work_type: Any | None,
 ) -> WorkCharacteristics | None:
     values: dict[str, str] = {}
     if work_type is not None:
@@ -72,8 +75,8 @@ def effective_characteristics(
 
 
 def work_item_to_response(
-    work_item: WorkItem,
-    work_type: WorkType | None = None,
+    work_item: Any,
+    work_type: Any | None = None,
 ) -> WorkItemResponse:
     return WorkItemResponse(
         id=work_item.id,

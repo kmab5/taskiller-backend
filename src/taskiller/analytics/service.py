@@ -7,8 +7,6 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from taskiller.analytics.derive import (
     DerivedInterval,
@@ -28,15 +26,17 @@ from taskiller.analytics.schemas import (
     WorkTypeAnalytics,
     WorkTypeAnalyticsList,
 )
-from taskiller.core.problems import ApiError
+from asgiref.sync import sync_to_async
+from taskiller.django_api.errors import TaskillerAPIError
 from taskiller.core.time import utc_now
-from taskiller.db.models import UserPreferences
-from taskiller.execution.models import (
-    ExecutionSessionModel,
-    SessionEventModel,
-    SessionReviewModel,
+from taskiller.django_domain.models import (
+    ExecutionSession,
+    SessionEvent,
+    SessionReview,
+    UserPreferences,
+    WorkItem,
+    WorkType,
 )
-from taskiller.work.models import WorkItem, WorkType
 from taskiller.work.schemas import WorkItemKind
 
 _PERSONALIZATION_WINDOW_DAYS = 90
@@ -68,17 +68,16 @@ class WorkContextEntry:
 
 @dataclass(slots=True)
 class LoadedHistory:
-    sessions: list[ExecutionSessionModel]
+    sessions: list[ExecutionSession]
     events: dict[UUID, list[EventRecord]]
-    reviews: dict[UUID, SessionReviewModel]
+    reviews: dict[UUID, SessionReview]
     work_items: dict[UUID, WorkItem]
     work_types: dict[UUID, WorkType]
     preferences: UserPreferences
 
 
 class AnalyticsService:
-    def __init__(self, db: AsyncSession, *, owner_id: UUID) -> None:
-        self.db = db
+    def __init__(self, *, owner_id: UUID) -> None:
         self.owner_id = owner_id
 
     async def summary(self, from_at: datetime, to_at: datetime) -> AnalyticsSummary:
@@ -224,7 +223,7 @@ class AnalyticsService:
         history = await self._load_history(end)
         work_item = history.work_items.get(work_item_id)
         if work_item is None:
-            raise ApiError(404, "work_item_not_found", "Work item not found")
+            raise TaskillerAPIError(404, "work_item_not_found", "Work item not found")
         ranged, full = self._derive_history(history, start, end)
         completion_map = self._completion_map(full, start, end)
         estimate_errors = self._estimate_errors(history, full, completion_map)
@@ -506,36 +505,22 @@ class AnalyticsService:
         )
 
     async def _load_history(self, to_at: datetime) -> LoadedHistory:
+        return await sync_to_async(self._load_history_sync, thread_sensitive=True)(to_at)
+
+    def _load_history_sync(self, to_at: datetime) -> LoadedHistory:
         sessions = list(
-            (
-                await self.db.scalars(
-                    select(ExecutionSessionModel)
-                    .where(
-                        ExecutionSessionModel.owner_id == self.owner_id,
-                        ExecutionSessionModel.session_started_at < to_at,
-                    )
-                    .order_by(ExecutionSessionModel.session_started_at, ExecutionSessionModel.id)
-                )
-            ).all()
+            ExecutionSession.objects.filter(
+                owner_id=self.owner_id,
+                session_started_at__lt=to_at,
+            ).order_by("session_started_at", "id")
         )
         session_ids = [row.id for row in sessions]
         events: dict[UUID, list[EventRecord]] = {session_id: [] for session_id in session_ids}
-        reviews: dict[UUID, SessionReviewModel] = {}
+        reviews: dict[UUID, SessionReview] = {}
         if session_ids:
-            event_rows = list(
-                (
-                    await self.db.scalars(
-                        select(SessionEventModel)
-                        .where(SessionEventModel.session_id.in_(session_ids))
-                        .order_by(
-                            SessionEventModel.session_id,
-                            SessionEventModel.occurred_at,
-                            SessionEventModel.id,
-                        )
-                    )
-                ).all()
-            )
-            for row in event_rows:
+            for row in SessionEvent.objects.filter(session_id__in=session_ids).order_by(
+                "session_id", "occurred_at", "id"
+            ):
                 events[row.session_id].append(
                     EventRecord(
                         type=row.type,
@@ -544,36 +529,17 @@ class AnalyticsService:
                         payload=dict(row.payload_json),
                     )
                 )
-            review_rows = list(
-                (
-                    await self.db.scalars(
-                        select(SessionReviewModel).where(
-                            SessionReviewModel.session_id.in_(session_ids)
-                        )
-                    )
-                ).all()
-            )
-            reviews = {row.session_id: row for row in review_rows}
+            reviews = {
+                row.session_id: row
+                for row in SessionReview.objects.filter(session_id__in=session_ids)
+            }
 
-        work_item_rows = list(
-            (
-                await self.db.scalars(select(WorkItem).where(WorkItem.owner_id == self.owner_id))
-            ).all()
-        )
-        work_items = {row.id: row for row in work_item_rows}
-        work_type_rows = list(
-            (
-                await self.db.scalars(
-                    select(WorkType).where(
-                        or_(WorkType.owner_id == self.owner_id, WorkType.owner_id.is_(None))
-                    )
-                )
-            ).all()
-        )
-        work_types = {row.id: row for row in work_type_rows}
-        preferences = await self.db.get(UserPreferences, self.owner_id)
+        work_items = {row.id: row for row in WorkItem.objects.filter(owner_id=self.owner_id)}
+        work_types = {row.id: row for row in WorkType.objects.filter(owner_id=self.owner_id)}
+        work_types.update({row.id: row for row in WorkType.objects.filter(owner_id__isnull=True)})
+        preferences = UserPreferences.objects.filter(user_id=self.owner_id).first()
         if preferences is None:
-            raise ApiError(500, "preferences_missing", "User preferences are missing")
+            raise TaskillerAPIError(500, "preferences_missing", "User preferences are missing")
         return LoadedHistory(
             sessions=sessions,
             events=events,
@@ -624,13 +590,13 @@ class AnalyticsService:
         return ranged, full
 
     def _target_context(
-        self, session: ExecutionSessionModel, history: LoadedHistory
+        self, session: ExecutionSession, history: LoadedHistory
     ) -> WorkContextEntry:
         return self._context_for(session, session.work_item_id, history)
 
     def _context_for(
         self,
-        session: ExecutionSessionModel,
+        session: ExecutionSession,
         work_item_id: UUID,
         history: LoadedHistory,
     ) -> WorkContextEntry:
@@ -847,7 +813,7 @@ class AnalyticsService:
     def _validate_range(from_at: datetime, to_at: datetime) -> tuple[datetime, datetime]:
         for name, value in (("from", from_at), ("to", to_at)):
             if value.tzinfo is None or value.utcoffset() is None:
-                raise ApiError(
+                raise TaskillerAPIError(
                     422,
                     "invalid_datetime_timezone",
                     "Datetime must include a UTC offset",
@@ -856,7 +822,7 @@ class AnalyticsService:
         start = from_at.astimezone(UTC)
         end = to_at.astimezone(UTC)
         if start >= end:
-            raise ApiError(
+            raise TaskillerAPIError(
                 422, "invalid_time_range", "Invalid time range", "from must be before to."
             )
         return start, end

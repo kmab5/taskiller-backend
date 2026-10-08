@@ -18,6 +18,9 @@ services:
       - key: TASKILLER_TOKEN_HASH_SECRET
         generateValue: true
 
+      - key: TASKILLER_DJANGO_SECRET_KEY
+        generateValue: true
+
       - key: TASKILLER_EMBEDDED_WORKER_ENABLED
         value: "true"
 

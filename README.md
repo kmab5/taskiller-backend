@@ -1,102 +1,29 @@
 # taskiller-backend
 
-Client-independent backend for **Taskiller** — a task execution and focus system built around Projects, Sprints, Chores, Focus Plans, Execution Sessions, analytics, and evidence-informed recommendations.
+Client-independent backend for **Taskiller**, now fully migrated to Django.
 
-## Status
+## Production stack
 
-**Backend v1 / Round 8 complete: Production Release.**
+- Python 3.14
+- Django 5.2 LTS
+- Django REST Framework
+- Django ORM
+- Django migrations
+- PostgreSQL / Neon
+- Uvicorn ASGI
+- PostgreSQL outbox worker implemented as a Django management command
+- Mailjet HTTPS API
+- PyJWT
+- pwdlib / Argon2id
+- pytest
+- Ruff
+- Pyright
+- uv
+- Docker
+- Render
 
-Implemented so far:
-
-- FastAPI application/configuration foundation
-- async SQLAlchemy + psycopg/PostgreSQL integration
-- Alembic migrations
-- Docker/CI/health probes/OpenAPI export
-- users and versioned profile/preferences
-- Argon2id password hashing
-- short-lived JWT access credentials
-- opaque, HMAC-hashed, rotating refresh credentials
-- database-backed device sessions with immediate revocation
-- refresh-token replay detection and session-family revocation
-- email-verification and password-reset one-time token primitives
-- session listing/revocation and logout-all
-- RFC-style structured API errors
-- ETag/If-Match optimistic concurrency for user-owned mutable resources
-- built-in and custom Work Types with work-characteristic profiles
-- Project/Sprint/Chore CRUD with bounded hierarchy rules
-- PostgreSQL-backed hierarchy enforcement
-- WorkItem state machine, ordering, soft deletion, trees and next-action selection
-- database-backed idempotency for create/reorder mutations
-- cursor pagination and ownership-safe Work queries
-- immutable, versioned Focus Plan recommendation snapshots
-- deterministic evidence-informed Focus recommendation engine
-- preference-aware strategy selection without fake confidence scores
-- Chore and Sprint recommendation generation
-- study/retrieval-aware plans
-- editable Focus Plans with normalized ordered segments
-- reusable generic Focus Plan templates
-- Focus Plan ETags, soft deletion, pagination and idempotent creates
-- cross-device Execution Sessions with immutable Focus Plan snapshots
-- append-only Session Events and deterministic Session state transitions
-- authoritative timestamp-based timer reconstruction
-- pause/resume/segment/break/finish/abandon workflows
-- one-open-Session-per-user database invariant
-- exact event idempotency with original-result replay
-- Session ETags and stale-device conflict rejection
-- explicit WorkItem completion from execution
-- terminal Session reviews
-- immutable historical Work context snapshots for analytics
-- deterministic active-work/break/pause reconstruction from Session Events
-- estimate calibration, start-delay and plan-adherence metrics
-- user, Work Type and WorkItem/Project/Sprint analytics rollups
-- timezone-aware day/week time series and local-hour focus patterns
-- conservative history-informed Focus recommendation personalization
-- privacy-safe asynchronous user data exports
-- scheduled account deletion with immediate credential revocation
-- PostgreSQL outbox worker with SKIP LOCKED claims and lease recovery
-- database-backed sensitive-endpoint rate limiting
-- append-only security/operational audit events
-- automated retention cleanup for expired credentials, exports and operational data
-- request IDs, structured HTTP access logs and hardened response headers
-- schema-aware readiness and build/release metadata endpoints
-- advisory-locked production migrations
-- optional embedded outbox worker for one-service preview deployments
-- complete OpenAPI Problem schema/code catalog and authorization release audit
-- full v1 end-to-end release smoke test and deployment/load-smoke tooling
-
-The planned eight-round backend is now **v1 feature-complete independently of the web client**.
-
-See:
-
-- `docs/ARCHITECTURE.md`
-- `docs/AUTH.md`
-- `docs/ROUND_2.md`
-- `docs/ROUND_3.md`
-- `docs/ROUND_4.md`
-- `docs/ROUND_5.md`
-- `docs/ROUND_6.md`
-- `docs/ROUND_7.md`
-- `docs/OPERATIONS.md`
-- `docs/PRODUCTION.md`
-- `docs/SECURITY.md`
-- `docs/AUTHORIZATION.md`
-- `docs/PROBLEMS.md`
-- `docs/OBSERVABILITY.md`
-- `docs/RUNBOOK.md`
-- `docs/ROUND_8.md`
-- `docs/ANALYTICS.md`
-- `docs/EXECUTION.md`
-- `docs/FOCUS.md`
-- `docs/WORK.md`
-- `docs/DEVELOPMENT_ROUNDS.md`
-- `openapi/current.json` — OpenAPI generated from the implemented application
-- `openapi/planned-v1.yaml` — full v1 planning baseline
-
-## Stack
-
-Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 · psycopg 3 · Alembic · PostgreSQL · PyJWT · pwdlib/Argon2id · pytest · Ruff · Pyright · uv · Docker
-
-Production direction: **Render Web Service + Neon PostgreSQL**.
+The public `/api/v1` contract is preserved from the original v1 API. `openapi/current.json`
+remains the canonical fully typed client contract and is served by Django at `/openapi.json`.
 
 ## Local setup
 
@@ -104,35 +31,54 @@ Production direction: **Render Web Service + Neon PostgreSQL**.
 cp .env.example .env
 docker compose up -d postgres
 uv sync --dev
-make migrate
-uv run uvicorn taskiller.main:app --app-dir src --reload
+PYTHONPATH=src uv run python manage.py migrate
+PYTHONPATH=src uv run python manage.py runserver 0.0.0.0:8000
 ```
 
 Then open:
 
 - `http://localhost:8000/docs`
 - `http://localhost:8000/openapi.json`
+- `http://localhost:8000/admin/`
 - `http://localhost:8000/health/live`
 - `http://localhost:8000/health/ready`
 
-## Quality commands
+## Background worker
 
 ```bash
-make lint
-make typecheck
-make test
-make test-integration
-make openapi
-make release-check
+PYTHONPATH=src uv run python manage.py taskiller_worker
 ```
 
-`make test-integration` requires `TASKILLER_TEST_DATABASE_URL` and a database migrated to `head`. CI provisions PostgreSQL and runs the migration before the full test suite.
+Render's one-service free deployment can run the worker alongside ASGI through
+`scripts/run_django_production.py`.
 
-## Environment model
+## Schema changes
 
-- `local`
-- `test`
-- `staging`
-- `production`
+Django migrations are the only supported schema-change mechanism:
 
-Staging and production use independent databases and secrets. The app refuses the development auth secrets in staging/production.
+```bash
+PYTHONPATH=src uv run python manage.py makemigrations
+PYTHONPATH=src uv run python manage.py migrate
+```
+
+Do not create new Alembic migrations.
+
+## Validation
+
+```bash
+make check
+```
+
+For the full client/server integration test, also run the web repository's:
+
+```bash
+TASKILLER_DJANGO_API_URL=http://127.0.0.1:8000 npm run test:e2e:django
+```
+
+## Legacy archive
+
+The old FastAPI/SQLAlchemy/Alembic implementation is retained under `legacy_backend/` only as
+historical source material. It is not installed, imported, tested, deployed or supported as a
+runtime.
+
+See `docs/DJANGO_PHASE10.md`.

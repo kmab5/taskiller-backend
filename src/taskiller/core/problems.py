@@ -1,14 +1,6 @@
-import logging
-from typing import Any, cast
+from __future__ import annotations
 
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-
-from taskiller.core.config import Settings
-
-logger = logging.getLogger(__name__)
-
+from typing import Any
 
 PROBLEM_CODES = frozenset(
     {
@@ -64,6 +56,8 @@ PROBLEM_CODES = frozenset(
 
 
 class ApiError(Exception):
+    """Framework-neutral compatibility error retained for shared domain helpers."""
+
     def __init__(
         self,
         status_code: int,
@@ -81,86 +75,3 @@ class ApiError(Exception):
         self.detail = detail
         self.meta = meta
         self.headers = headers or {}
-
-
-def problem_response(request: Request, error: ApiError) -> JSONResponse:
-    body: dict[str, Any] = {
-        "type": f"/problems/{error.code}",
-        "title": error.title,
-        "status": error.status_code,
-        "code": error.code,
-        "instance": request.url.path,
-    }
-    request_id = getattr(request.state, "request_id", None)
-    if request_id:
-        body["requestId"] = request_id
-    if error.detail:
-        body["detail"] = error.detail
-    if error.meta:
-        body["meta"] = error.meta
-    headers = dict(error.headers)
-    if request_id:
-        headers.setdefault("X-Request-ID", request_id)
-    headers.setdefault("Cache-Control", "no-store")
-    settings = cast(Settings | None, getattr(request.app.state, "settings", None))
-    if settings is not None and settings.security_headers_enabled:
-        headers.setdefault("X-Content-Type-Options", "nosniff")
-        headers.setdefault("X-Frame-Options", "DENY")
-        headers.setdefault("Referrer-Policy", "no-referrer")
-        headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-        if settings.is_production and settings.hsts_max_age_seconds:
-            headers.setdefault(
-                "Strict-Transport-Security",
-                f"max-age={settings.hsts_max_age_seconds}; includeSubDomains",
-            )
-    return JSONResponse(
-        status_code=error.status_code,
-        content=body,
-        media_type="application/problem+json",
-        headers=headers,
-    )
-
-
-def install_problem_handlers(app: FastAPI) -> None:
-    @app.exception_handler(ApiError)
-    async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
-        return problem_response(request, exc)
-
-    @app.exception_handler(RequestValidationError)
-    async def handle_validation_error(
-        request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
-        error = ApiError(
-            422,
-            "validation_error",
-            "Request validation failed",
-            "One or more request values are invalid.",
-            meta={
-                "errors": [
-                    {
-                        "type": item.get("type"),
-                        "loc": item.get("loc"),
-                        "msg": item.get("msg"),
-                    }
-                    for item in exc.errors()
-                ]
-            },
-        )
-        return problem_response(request, error)
-
-    @app.exception_handler(Exception)
-    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-        request_id = getattr(request.state, "request_id", None)
-        logger.exception(
-            "unhandled_request_error",
-            extra={"request_id": request_id, "path": request.url.path},
-        )
-        return problem_response(
-            request,
-            ApiError(
-                500,
-                "internal_error",
-                "Internal server error",
-                "The request could not be completed.",
-            ),
-        )

@@ -1,97 +1,78 @@
-# Production Deployment — Render + Neon + Vercel
+# Production Deployment — Django Cutover
 
-Taskiller's current zero-cost deployment topology is:
-
-```text
-Browser / installed PWA
-        |
-        v
-Vercel — taskiller-web
-        |
-        | HTTPS REST API
-        v
-Render Free — taskiller-api
-        | \
-        |  \ HTTPS
-        |   -> Mailjet Send API v3.1
-        v
-Neon — PostgreSQL
-```
-
-## Render API
-
-Deploy `kmab5/taskiller-backend` from GitHub using the repository `Dockerfile`.
-
-- Runtime: Docker
-- Plan: Free
-- Branch: `main`
-- Health check: `/health/ready`
-- Embedded worker: enabled for the one-service free deployment
-
-Required production environment values:
+Taskiller production is now:
 
 ```text
-TASKILLER_ENV=production
-TASKILLER_DATABASE_URL=<Neon pooled SQLAlchemy/psycopg URL>
-TASKILLER_JWT_SECRET=<independent strong secret>
-TASKILLER_TOKEN_HASH_SECRET=<different independent strong secret>
-
-TASKILLER_EMAIL_DELIVERY_MODE=mailjet
-TASKILLER_WEB_APP_URL=https://taskiller-web.vercel.app
-TASKILLER_MAILJET_API_KEY=<Mailjet public API key>
-TASKILLER_MAILJET_SECRET_KEY=<Mailjet private/secret API key>
-TASKILLER_MAILJET_FROM_EMAIL=<verified Mailjet sender address>
-TASKILLER_MAILJET_FROM_NAME=Taskiller
-
-TASKILLER_CORS_ORIGINS=["https://taskiller-web.vercel.app"]
-TASKILLER_ALLOWED_HOSTS=["taskiller-api-ukwf.onrender.com"]
-TASKILLER_TRUST_FORWARDED_FOR=true
-
-TASKILLER_REFRESH_COOKIE_SECURE=true
-TASKILLER_REFRESH_COOKIE_SAMESITE=none
-TASKILLER_EMBEDDED_WORKER_ENABLED=true
+Vercel / SvelteKit
+       |
+       | HTTPS /api/v1
+       v
+Render Free / Django ASGI
+       | \
+       |  \ HTTPS
+       |   -> Mailjet
+       |
+       +---- Neon PostgreSQL
+       |
+       +---- embedded Django outbox worker
 ```
 
-Keep all provider keys and authentication secrets only in Render environment variables.
+## One-time schema adoption
 
-## Mailjet
+Before the first Django production deployment:
 
-Taskiller uses Mailjet's HTTPS Send API v3.1 rather than SMTP. The sender must be an active sender address in the Mailjet account attached to the configured API key.
+```bash
+uv lock
+uv sync --dev
+python apply_django_phase8.py
+PYTHONPATH=src uv run python scripts/prepare_django_baseline.py
+```
 
-The backend sends:
+Review and commit the generated `django_domain/migrations/0001_...py`.
 
-- email-verification links to `/verify-email?token=...`
-- password-reset links to `/reset-password?token=...`
+The live Neon database must already be at legacy Alembic head `20260930_0007`.
 
-`TASKILLER_WEB_APP_URL` controls the public frontend origin used in those links.
+On the first Django startup, `scripts/django_cutover_migrate.py` runs
+`migrate --fake-initial`: Django creates its built-in admin/auth/session tables and records the
+existing Taskiller domain schema as its initial migration without recreating those tables.
 
-A Gmail sender address can be activated in Mailjet without owning its domain, but Gmail's SPF/DKIM records cannot be changed by the Taskiller operator. That is acceptable for initial development and small-scale testing but can reduce deliverability compared with a future custom domain.
+After this adoption, all new Taskiller schema changes must be Django migrations.
 
-## Neon
+## Render
 
-Use the pooled Neon connection string (`-pooler` endpoint where applicable) as `TASKILLER_DATABASE_URL`.
-
-## Refresh cookie
-
-Vercel and Render are cross-site hosts, so production uses:
+Docker starts:
 
 ```text
-TASKILLER_REFRESH_COOKIE_SAMESITE=none
-TASKILLER_REFRESH_COOKIE_SECURE=true
+python scripts/run_django_production.py
 ```
 
-## Embedded worker
+This:
 
-Render Free only runs the web service. Keep:
+1. applies committed Django migrations;
+2. starts the Django outbox worker when `TASKILLER_EMBEDDED_WORKER_ENABLED=true`;
+3. starts Django ASGI with Uvicorn.
+
+Required new secret:
 
 ```text
-TASKILLER_EMBEDDED_WORKER_ENABLED=true
+TASKILLER_DJANGO_SECRET_KEY=<strong independent secret>
 ```
 
-The embedded worker processes data exports, account deletion, and retention work while the API instance is awake.
+Existing JWT, token-HMAC, Mailjet, database, CORS and refresh-cookie environment variables remain.
 
-## Health
+## OpenAPI
 
-- `/health/live` — process liveness
-- `/health/ready` — PostgreSQL reachable and schema at the expected Alembic revision
-- `/health/version` — build version and deployment metadata
+`/openapi.json` serves the fully typed committed `openapi/current.json`.
+
+The Django runtime is audited against that contract in CI. This intentionally avoids replacing
+the client contract with the less-detailed transitional drf-spectacular schemas.
+
+## Rollback
+
+Until Django has been stable in production, the previous FastAPI entrypoint remains in the codebase:
+
+```bash
+PYTHONPATH=src uv run uvicorn taskiller.main:app --host 0.0.0.0 --port 8000
+```
+
+Do not create new Alembic migrations after Django adoption.

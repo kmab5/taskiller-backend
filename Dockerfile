@@ -10,6 +10,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
+COPY manage.py ./manage.py
+RUN PYTHONPATH=src uv run python manage.py collectstatic --noinput
 
 FROM python:3.14.7-slim AS runtime
 
@@ -22,10 +24,11 @@ RUN groupadd --system taskiller && useradd --system --gid taskiller --home /app 
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/staticfiles /app/staticfiles
 COPY src ./src
-COPY alembic ./alembic
-COPY alembic.ini ./alembic.ini
 COPY scripts ./scripts
+COPY openapi ./openapi
+COPY manage.py ./manage.py
 
 USER taskiller
 EXPOSE 8000
@@ -34,4 +37,4 @@ STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:' + __import__('os').environ.get('PORT', '8000') + '/health/live', timeout=3).read()"
 
-CMD ["sh", "-c", "python scripts/migrate.py && exec uvicorn taskiller.main:app --app-dir src --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["python", "scripts/run_django_production.py"]
