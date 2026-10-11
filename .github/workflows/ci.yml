@@ -76,6 +76,9 @@ jobs:
       - name: Baseline audit
         run: PYTHONPATH=src uv run python scripts/django_phase9_baseline_audit.py
 
+      - name: Collect Django static files
+        run: PYTHONPATH=src uv run python manage.py collectstatic --noinput
+
       - name: Production-shaped smoke
         run: PYTHONPATH=src uv run python scripts/django_phase9_production_smoke.py
 
