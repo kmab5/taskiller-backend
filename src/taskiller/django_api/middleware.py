@@ -28,7 +28,7 @@ class TaskillerRuntimeMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         settings = get_settings()
         request_id = _request_id(request)
-        setattr(request, "taskiller_request_id", request_id)
+        request.taskiller_request_id = request_id
         started = time.perf_counter()
 
         origin = request.headers.get("origin")
@@ -74,5 +74,5 @@ class TaskillerRuntimeMiddleware:
             )
             response["Access-Control-Expose-Headers"] = "ETag, Location, Retry-After, X-Request-ID"
 
-        setattr(request, "taskiller_duration_ms", round((time.perf_counter() - started) * 1000, 2))
+        request.taskiller_duration_ms = round((time.perf_counter() - started) * 1000, 2)
         return response

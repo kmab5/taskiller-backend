@@ -1,6 +1,5 @@
 """Regression for DRF authentication/exception-handler import ordering."""
 
-import importlib
 import os
 import subprocess
 import sys

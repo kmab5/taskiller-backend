@@ -43,7 +43,6 @@ from taskiller.django_api.serializers import (
     UserResponseSerializer,
 )
 from taskiller.django_api.user_service import (
-    require_etag,
     update_preferences,
     update_user,
 )

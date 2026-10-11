@@ -13,36 +13,64 @@ import django
 django.setup()
 
 from sqlalchemy import create_engine, func, select  # noqa: E402
-
 from taskiller.db.models import (  # noqa: E402
     AuthSession as SAAuthSession,
+)
+from taskiller.db.models import (
     EmailVerificationToken as SAEmailVerificationToken,
+)
+from taskiller.db.models import (
     IdempotencyRecord as SAIdempotencyRecord,
+)
+from taskiller.db.models import (
     PasswordResetToken as SAPasswordResetToken,
+)
+from taskiller.db.models import (
     RefreshToken as SARefreshToken,
+)
+from taskiller.db.models import (
     User as SAUser,
+)
+from taskiller.db.models import (
     UserPreferences as SAUserPreferences,
 )
-from taskiller.django_domain import models as dj  # noqa: E402
 from taskiller.execution.models import (  # noqa: E402
     ExecutionSessionModel as SAExecutionSession,
+)
+from taskiller.execution.models import (
     SessionEventModel as SASessionEvent,
+)
+from taskiller.execution.models import (
     SessionReviewModel as SASessionReview,
 )
 from taskiller.focus.models import (  # noqa: E402
     FocusPlanModel as SAFocusPlan,
+)
+from taskiller.focus.models import (
     FocusPlanRecommendationModel as SAFocusPlanRecommendation,
+)
+from taskiller.focus.models import (
     FocusPlanSegmentModel as SAFocusPlanSegment,
 )
 from taskiller.operations.models import (  # noqa: E402
     AccountDeletionRequest as SAAccountDeletionRequest,
+)
+from taskiller.operations.models import (
     DataExportRequest as SADataExportRequest,
+)
+from taskiller.operations.models import (
     OutboxJob as SAOutboxJob,
+)
+from taskiller.operations.models import (
     RateLimitBucket as SARateLimitBucket,
+)
+from taskiller.operations.models import (
     SecurityEvent as SASecurityEvent,
 )
 from taskiller.work.models import WorkItem as SAWorkItem  # noqa: E402
 from taskiller.work.models import WorkType as SAWorkType  # noqa: E402
+
+from taskiller.django_domain import models as dj  # noqa: E402
 
 PAIRS = (
     (dj.TaskillerUser, SAUser),

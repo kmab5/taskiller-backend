@@ -9,12 +9,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from taskiller.django_api.errors import TaskillerAPIError
 from taskiller.django_api.focus_service import (
     DjangoFocusService,
     require_idempotency_key,
     validate_payload,
 )
-from taskiller.django_api.errors import TaskillerAPIError
 from taskiller.django_api.runtime import taskiller_settings
 from taskiller.focus.schemas import (
     CreateFocusPlanRequest,

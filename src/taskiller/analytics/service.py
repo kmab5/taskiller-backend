@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from asgiref.sync import sync_to_async
 
 from taskiller.analytics.derive import (
     DerivedInterval,
@@ -26,9 +27,8 @@ from taskiller.analytics.schemas import (
     WorkTypeAnalytics,
     WorkTypeAnalyticsList,
 )
-from asgiref.sync import sync_to_async
-from taskiller.django_api.errors import TaskillerAPIError
 from taskiller.core.time import utc_now
+from taskiller.django_api.errors import TaskillerAPIError
 from taskiller.django_domain.models import (
     ExecutionSession,
     SessionEvent,
