@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC
 from uuid import UUID
 
 from django.db.models import F
@@ -77,7 +76,6 @@ def _set_refresh_cookie(response: Response, issued: IssuedCredentials) -> None:
         key=REFRESH_COOKIE_NAME,
         value=issued.refresh_token,
         max_age=max_age,
-        expires=issued.refresh_expires_at.astimezone(UTC),
         path=f"{settings.api_prefix}/auth",
         domain=settings.refresh_cookie_domain,
         secure=settings.cookie_secure,
