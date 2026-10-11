@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Exercise the Django Auth/User API against the Alembic-owned test schema."""
 
 from __future__ import annotations
@@ -11,9 +12,9 @@ import django
 
 django.setup()
 
-from django.test import Client  # noqa: E402
+from django.test import Client
 
-from taskiller.django_domain.models import TaskillerUser  # noqa: E402
+from taskiller.django_domain.models import TaskillerUser
 
 
 def _bearer(token: str) -> dict[str, str]:

@@ -164,7 +164,10 @@ class DjangoAuthService:
                             401,
                             "refresh_token_reuse",
                             "Refresh token reuse detected",
-                            "The device session was revoked because an old refresh token was replayed.",
+                            (
+                                "The device session was revoked because an old refresh "
+                                "token was replayed."
+                            ),
                         )
                     elif current.revoked_at is not None:
                         deferred_error = self._invalid_refresh()

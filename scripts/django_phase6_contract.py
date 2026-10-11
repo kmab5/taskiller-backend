@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Compare migrated Django Auth/User/Work/Focus/Execution API with FastAPI."""
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import django
 
 django.setup()
 
-from drf_spectacular.generators import SchemaGenerator  # noqa: E402
+from drf_spectacular.generators import SchemaGenerator
 
 ROOT = Path(__file__).resolve().parents[1]
 FASTAPI_OPENAPI = ROOT / "openapi" / "current.json"

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Generate the one-time Django initial migration for the existing Taskiller schema.
 
 Run this locally after Phase 8 is applied and dependencies are synced, then review and
@@ -15,7 +16,7 @@ import django
 
 django.setup()
 
-from django.core.management import call_command  # noqa: E402
+from django.core.management import call_command
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS = ROOT / "src" / "taskiller" / "django_domain" / "migrations"

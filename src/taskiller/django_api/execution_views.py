@@ -75,7 +75,7 @@ def _parse_datetime(value: str | None, name: str) -> datetime | None:
 
 
 class ExecutionSessionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listExecutionSessions",
@@ -145,7 +145,7 @@ class ExecutionSessionsView(APIView):
 
 
 class ActiveExecutionSessionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getActiveExecutionSession",
@@ -157,7 +157,7 @@ class ActiveExecutionSessionView(APIView):
 
 
 class ExecutionSessionDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getExecutionSession",
@@ -176,7 +176,7 @@ class ExecutionSessionDetailView(APIView):
 
 
 class ExecutionSessionEventsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listExecutionSessionEvents",
@@ -232,7 +232,7 @@ class ExecutionSessionEventsView(APIView):
 
 
 class ExecutionSessionReviewView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getExecutionSessionReview",

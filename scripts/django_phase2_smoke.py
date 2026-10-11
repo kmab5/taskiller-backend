@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Smoke the cumulative Django Phase 1 + 2 foundation."""
 
 from __future__ import annotations
@@ -10,10 +11,10 @@ import django
 
 django.setup()
 
-from django.contrib import admin  # noqa: E402
-from django.test import Client  # noqa: E402
+from django.contrib import admin
+from django.test import Client
 
-from taskiller.django_domain import models as domain  # noqa: E402
+from taskiller.django_domain import models as domain
 
 
 def main() -> None:

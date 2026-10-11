@@ -206,7 +206,10 @@ class DjangoFocusService:
                     422,
                     "project_requires_next_action",
                     "Project cannot be focused directly",
-                    "Resolve the Project next action and request a Focus Plan for its Sprint or Chore.",
+                    (
+                        "Resolve the Project next action and request a Focus "
+                        "Plan for its Sprint or Chore."
+                    ),
                 )
 
             preferences = UserPreferences.objects.filter(user_id=self.owner_id).first()
@@ -531,7 +534,10 @@ class DjangoFocusService:
                         409,
                         "focus_plan_source_conflict",
                         "Focus Plan source conflict",
-                        "A template-source plan cannot be converted in place to a non-template plan.",
+                        (
+                            "A template-source plan cannot be converted in place to "
+                            "a non-template plan."
+                        ),
                     )
 
             if "segments" in payload.model_fields_set and payload.segments is not None:

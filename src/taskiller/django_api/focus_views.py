@@ -51,7 +51,7 @@ def _parse_uuid(value: str | None, name: str) -> UUID | None:
 
 
 class RecommendationsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="createFocusPlanRecommendation",
@@ -69,7 +69,7 @@ class RecommendationsView(APIView):
 
 
 class RecommendationDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getFocusPlanRecommendation",
@@ -81,7 +81,7 @@ class RecommendationDetailView(APIView):
 
 
 class FocusPlansView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listFocusPlans",
@@ -136,7 +136,7 @@ class FocusPlansView(APIView):
 
 
 class FocusPlanDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getFocusPlan",

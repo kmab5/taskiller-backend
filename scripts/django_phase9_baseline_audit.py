@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Verify the committed/adopted Django domain migration baseline."""
 
 from __future__ import annotations
@@ -11,9 +12,9 @@ import django
 
 django.setup()
 
-from django.apps import apps  # noqa: E402
-from django.db import connection  # noqa: E402
-from django.db.migrations.executor import MigrationExecutor  # noqa: E402
+from django.apps import apps
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS = ROOT / "src" / "taskiller" / "django_domain" / "migrations"

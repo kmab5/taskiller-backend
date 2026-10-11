@@ -240,10 +240,9 @@ class DjangoWorkService:
                     row.display_name = payload.display_name
                     changed = True
 
-            if "description" in payload.model_fields_set:
-                if row.description != payload.description:
-                    row.description = payload.description
-                    changed = True
+            if "description" in payload.model_fields_set and row.description != payload.description:
+                row.description = payload.description
+                changed = True
 
             if (
                 "characteristics" in payload.model_fields_set
@@ -477,12 +476,10 @@ class DjangoWorkService:
                         setattr(row, field, value)
                         changed = True
 
-            if "characteristic_overrides" in payload.model_fields_set:
-                if self._replace_overrides(
-                    row,
-                    payload.characteristic_overrides,
-                ):
-                    changed = True
+            if "characteristic_overrides" in payload.model_fields_set and self._replace_overrides(
+                row, payload.characteristic_overrides
+            ):
+                changed = True
 
             if "status" in payload.model_fields_set:
                 assert payload.status is not None

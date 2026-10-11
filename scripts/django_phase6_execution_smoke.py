@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Exercise Django Execution behavior on the Alembic-owned test schema."""
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import django
 
 django.setup()
 
-from django.test import Client  # noqa: E402
+from django.test import Client
 
 
 def bearer(token: str) -> dict[str, str]:

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Exercise Django Work API behavior on the Alembic-owned test schema."""
 
 from __future__ import annotations
@@ -11,9 +12,9 @@ import django
 
 django.setup()
 
-from django.test import Client  # noqa: E402
+from django.test import Client
 
-from taskiller.django_domain.models import WorkItem  # noqa: E402
+from taskiller.django_domain.models import WorkItem
 
 
 def _bearer(token: str) -> dict[str, str]:
@@ -170,7 +171,6 @@ def main() -> None:
     )
     if update.status_code != 200 or update.json()["status"] != "in_progress":
         raise SystemExit(f"work update failed: {update.status_code} {update.content!r}")
-    updated_etag = update.headers.get("ETag")
 
     stale = client.patch(
         f"/api/v1/work-items/{chore_one_id}",

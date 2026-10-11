@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 import json
@@ -11,7 +12,7 @@ import django
 
 django.setup()
 
-from drf_spectacular.generators import SchemaGenerator  # noqa: E402
+from drf_spectacular.generators import SchemaGenerator
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL = ROOT / "openapi" / "current.json"

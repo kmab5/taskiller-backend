@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Validate Django's unmanaged bridge against the live Alembic-owned schema."""
 
 from __future__ import annotations
@@ -11,9 +12,9 @@ import django
 
 django.setup()
 
-from django.db import connection  # noqa: E402
+from django.db import connection
 
-from taskiller.django_domain.models import (  # noqa: E402
+from taskiller.django_domain.models import (
     AccountDeletionRequest,
     AuthSession,
     DataExportRequest,

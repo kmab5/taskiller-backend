@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Final Django cutover contract audit."""
 
 from __future__ import annotations
@@ -13,12 +14,12 @@ import django
 
 django.setup()
 
-from django.db import connection  # noqa: E402
-from django.db.migrations.executor import MigrationExecutor  # noqa: E402
-from drf_spectacular.generators import SchemaGenerator  # noqa: E402
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from drf_spectacular.generators import SchemaGenerator
 
-from taskiller import __version__  # noqa: E402
-from taskiller.core.problems import PROBLEM_CODES  # noqa: E402
+from taskiller import __version__
+from taskiller.core.problems import PROBLEM_CODES
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL = ROOT / "openapi" / "current.json"

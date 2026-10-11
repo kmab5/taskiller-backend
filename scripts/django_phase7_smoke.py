@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 import os
@@ -10,10 +11,10 @@ import django
 
 django.setup()
 
-from django.core.management import call_command  # noqa: E402
-from django.test import Client  # noqa: E402
+from django.core.management import call_command
+from django.test import Client
 
-from taskiller.django_domain.models import DataExportRequest, OutboxJob  # noqa: E402
+from taskiller.django_domain.models import DataExportRequest, OutboxJob
 
 
 def bearer(token: str) -> dict[str, str]:

@@ -56,7 +56,7 @@ def _parse_uuid(value: str | None, name: str) -> UUID | None:
 
 
 class WorkTypesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listWorkTypes",
@@ -83,7 +83,7 @@ class WorkTypesView(APIView):
 
 
 class WorkTypeDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getWorkType",
@@ -139,7 +139,7 @@ class WorkTypeDetailView(APIView):
 
 
 class WorkItemsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listWorkItems",
@@ -215,7 +215,7 @@ class WorkItemsView(APIView):
 
 
 class WorkItemDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getWorkItem",
@@ -271,7 +271,7 @@ class WorkItemDetailView(APIView):
 
 
 class WorkItemChildrenView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listWorkItemChildren",
@@ -287,7 +287,7 @@ class WorkItemChildrenView(APIView):
 
 
 class WorkItemTreeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getWorkItemTree",
@@ -303,7 +303,7 @@ class WorkItemTreeView(APIView):
 
 
 class WorkItemReorderView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="reorderWorkItem",
@@ -330,7 +330,7 @@ class WorkItemReorderView(APIView):
 
 
 class ProjectNextActionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getProjectNextAction",

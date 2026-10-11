@@ -45,7 +45,7 @@ def _json(value: object) -> dict[str, object]:
 
 
 class AnalyticsSummaryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getAnalyticsSummary",
@@ -61,7 +61,7 @@ class AnalyticsSummaryView(APIView):
 
 
 class WorkTypeAnalyticsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getWorkTypeAnalytics",
@@ -77,7 +77,7 @@ class WorkTypeAnalyticsView(APIView):
 
 
 class WorkItemAnalyticsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getWorkItemAnalytics",
@@ -94,7 +94,7 @@ class WorkItemAnalyticsView(APIView):
 
 
 class AnalyticsTimeseriesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getAnalyticsTimeseries",
@@ -121,7 +121,7 @@ class AnalyticsTimeseriesView(APIView):
 
 
 class FocusPatternsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getFocusPatterns",

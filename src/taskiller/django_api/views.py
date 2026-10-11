@@ -99,8 +99,8 @@ def _clear_refresh_cookie(response: Response) -> None:
 
 
 class RegisterView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="register",
@@ -132,8 +132,8 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="login",
@@ -164,8 +164,8 @@ class LoginView(APIView):
 
 
 class RefreshView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="refreshAccessToken",
@@ -189,7 +189,7 @@ class RefreshView(APIView):
 
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(operation_id="logout", tags=["Auth"], request=None, responses={204: None})
     def post(self, request: Request) -> Response:
@@ -205,7 +205,7 @@ class LogoutView(APIView):
 
 
 class LogoutAllView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(operation_id="logoutAll", tags=["Auth"], request=None, responses={204: None})
     def post(self, request: Request) -> Response:
@@ -216,7 +216,7 @@ class LogoutAllView(APIView):
 
 
 class SessionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="listAuthSessions",
@@ -249,7 +249,7 @@ class SessionsView(APIView):
 
 
 class SessionDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="revokeAuthSession",
@@ -276,7 +276,7 @@ class SessionDetailView(APIView):
 
 
 class RequestEmailVerificationView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="requestEmailVerification",
@@ -290,8 +290,8 @@ class RequestEmailVerificationView(APIView):
 
 
 class ConfirmEmailVerificationView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="confirmEmailVerification",
@@ -307,8 +307,8 @@ class ConfirmEmailVerificationView(APIView):
 
 
 class RequestPasswordResetView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="requestPasswordReset",
@@ -332,8 +332,8 @@ class RequestPasswordResetView(APIView):
 
 
 class ConfirmPasswordResetView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="confirmPasswordReset",
@@ -352,7 +352,7 @@ class ConfirmPasswordResetView(APIView):
 
 
 class MeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getMe",
@@ -404,7 +404,7 @@ class MeView(APIView):
         record_security_event(
             request,
             event_type="account_deletion_scheduled",
-            user_id=locked.id,
+            user_id=user.id,
             metadata={"requestId": str(deletion.id)},
         )
         response = Response(
@@ -421,7 +421,7 @@ class MeView(APIView):
 
 
 class PreferencesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getPreferences",
@@ -462,7 +462,7 @@ class PreferencesView(APIView):
 
 
 class ExportRequestCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="requestDataExport",
@@ -500,7 +500,7 @@ class ExportRequestCreateView(APIView):
 
 
 class ExportRequestDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         operation_id="getDataExportRequest",
@@ -522,8 +522,8 @@ class ExportRequestDetailView(APIView):
 
 
 class ExportDownloadView(APIView):
-    authentication_classes: list[type] = []
-    permission_classes = [AllowAny]
+    authentication_classes: tuple[type, ...] = ()
+    permission_classes = (AllowAny,)
 
     @extend_schema(
         operation_id="downloadDataExport",
