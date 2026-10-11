@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from rest_framework import exceptions, status
 from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
 
 
 class TaskillerAPIError(Exception):
@@ -127,6 +130,13 @@ def taskiller_exception_handler(exc: Exception, context: dict[str, Any]) -> Resp
             )
         return response
 
+    logger.error(
+        "Unexpected Taskiller API exception; path=%s method=%s request_id=%s",
+        getattr(request, "path", ""),
+        getattr(request, "method", ""),
+        getattr(request, "taskiller_request_id", None),
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
     return _problem(
         request,
         TaskillerAPIError(
