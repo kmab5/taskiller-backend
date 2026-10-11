@@ -4,7 +4,6 @@ from typing import Any
 
 from rest_framework import exceptions, status
 from rest_framework.response import Response
-from rest_framework.views import exception_handler as drf_exception_handler
 
 
 class TaskillerAPIError(Exception):
@@ -114,6 +113,10 @@ def taskiller_exception_handler(exc: Exception, context: dict[str, Any]) -> Resp
                 meta={"errors": _validation_meta(exc.detail)},
             ),
         )
+
+    # Import lazily: DRF imports the authentication class while views.py is initializing.
+    # A module-level views import here would cause a circular import.
+    from rest_framework.views import exception_handler as drf_exception_handler
 
     response = drf_exception_handler(exc, context)
     if response is not None:
