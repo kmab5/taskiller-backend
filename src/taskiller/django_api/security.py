@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.db import connection, transaction
 from rest_framework.request import Request
@@ -108,6 +108,7 @@ def record_security_event(
 ) -> None:
     try:
         SecurityEvent.objects.create(
+            id=uuid4(),
             user_id=user_id,
             event_type=event_type,
             subject_hash=_subject_hash(client_ip(request)),
