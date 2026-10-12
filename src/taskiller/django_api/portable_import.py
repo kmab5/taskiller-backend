@@ -122,7 +122,10 @@ def import_portable_document(owner_id: UUID, raw: Any, key: str) -> dict[str, An
             definition = declared.get(slug)
             if definition is None:
                 raise TaskillerAPIError(
-                    422, "work_type_missing", "Missing Work Type", f"Work Type {slug} is not defined."
+                    422,
+                    "work_type_missing",
+                    "Missing Work Type",
+                    f"Work Type {slug} is not defined.",
                 )
             try:
                 created = service.create_work_type(
@@ -149,8 +152,12 @@ def import_portable_document(owner_id: UUID, raw: Any, key: str) -> dict[str, An
                     "name": item.name,
                     "description": item.description,
                     "status": "draft",
-                    "parentId": imported.get(item.parent_source_id) if item.parent_source_id else None,
-                    "workTypeId": available.get(item.work_type_slug) if item.work_type_slug else None,
+                    "parentId": imported.get(item.parent_source_id)
+                    if item.parent_source_id
+                    else None,
+                    "workTypeId": available.get(item.work_type_slug)
+                    if item.work_type_slug
+                    else None,
                     "priority": item.priority,
                     "estimatedEffortSeconds": item.estimated_effort_seconds,
                     "plannedStartAt": item.planned_start_at,
@@ -159,7 +166,8 @@ def import_portable_document(owner_id: UUID, raw: Any, key: str) -> dict[str, An
                     "targetEndDate": item.target_end_date,
                     "characteristicOverrides": (
                         item.characteristic_overrides.model_dump(mode="json", by_alias=True)
-                        if item.characteristic_overrides is not None else None
+                        if item.characteristic_overrides is not None
+                        else None
                     ),
                 }
                 try:

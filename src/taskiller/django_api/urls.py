@@ -1,6 +1,13 @@
 from django.urls import path
 
-from taskiller.django_api import analytics_views, execution_views, focus_views, portable_views, views, work_views
+from taskiller.django_api import (
+    analytics_views,
+    execution_views,
+    focus_views,
+    portable_views,
+    views,
+    work_views,
+)
 
 urlpatterns = [
     path("api/v1/auth/register", views.RegisterView.as_view()),
