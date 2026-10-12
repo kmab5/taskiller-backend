@@ -5,6 +5,27 @@ from django.db import models
 DO_NOTHING = models.DO_NOTHING
 
 
+class PsycopgCompatibleJSONField(models.JSONField):
+    """Accept psycopg JSONB values decoded by either driver or Django.
+
+    Django expects JSONB from PostgreSQL to arrive as JSON text. Some psycopg
+    connection configurations return the decoded Python value instead. Without
+    this guard Django JSONField.from_db_value invokes json.loads(dict) and
+    crashes session history, analytics and other JSON-backed endpoints.
+    """
+
+    def from_db_value(self, value, expression, connection):
+        if value is None or not isinstance(value, (str, bytes, bytearray)):
+            return value
+        return super().from_db_value(value, expression, connection)
+
+    def deconstruct(self):
+        name, _path, args, kwargs = super().deconstruct()
+        # This is a Python-side decoder compatibility fix, not a schema change.
+        # Keep migration state identical to the existing JSONField migration.
+        return name, "django.db.models.JSONField", args, kwargs
+
+
 class ExistingTaskillerModel(models.Model):
     class Meta:
         abstract = True
@@ -149,7 +170,7 @@ class IdempotencyRecord(ExistingTaskillerModel):
     idempotency_key = models.CharField(max_length=200)
     request_hash = models.CharField(max_length=64)
     response_status = models.IntegerField(null=True)
-    response_body_json = models.JSONField(null=True)
+    response_body_json = PsycopgCompatibleJSONField(null=True)
     resource_id = models.UUIDField(null=True)
     created_at = models.DateTimeField()
     expires_at = models.DateTimeField()
@@ -259,9 +280,9 @@ class FocusPlanRecommendation(ExistingTaskillerModel):
     engine_version = models.CharField(max_length=40)
     provenance = models.CharField(max_length=40)
     strategy = models.CharField(max_length=40)
-    input_snapshot_json = models.JSONField()
-    plan_snapshot_json = models.JSONField()
-    reasons_json = models.JSONField()
+    input_snapshot_json = PsycopgCompatibleJSONField()
+    plan_snapshot_json = PsycopgCompatibleJSONField()
+    reasons_json = PsycopgCompatibleJSONField()
     created_at = models.DateTimeField()
 
     class Meta(ExistingTaskillerModel.Meta):
@@ -367,9 +388,9 @@ class ExecutionSession(ExistingTaskillerModel):
     current_segment_started_at = models.DateTimeField(null=True)
     paused_at = models.DateTimeField(null=True)
     ended_at = models.DateTimeField(null=True)
-    plan_snapshot_json = models.JSONField()
-    recommendation_snapshot_json = models.JSONField(null=True)
-    work_context_snapshot_json = models.JSONField()
+    plan_snapshot_json = PsycopgCompatibleJSONField()
+    recommendation_snapshot_json = PsycopgCompatibleJSONField(null=True)
+    work_context_snapshot_json = PsycopgCompatibleJSONField()
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
     version = models.IntegerField()
@@ -398,8 +419,8 @@ class SessionEvent(ExistingTaskillerModel):
     segment_index = models.IntegerField(null=True)
     idempotency_key = models.CharField(max_length=200)
     request_hash = models.CharField(max_length=64)
-    payload_json = models.JSONField()
-    result_session_snapshot_json = models.JSONField()
+    payload_json = PsycopgCompatibleJSONField()
+    result_session_snapshot_json = PsycopgCompatibleJSONField()
     created_at = models.DateTimeField()
 
     class Meta(ExistingTaskillerModel.Meta):
@@ -472,7 +493,7 @@ class AccountDeletionRequest(ExistingTaskillerModel):
 class OutboxJob(ExistingTaskillerModel):
     id = models.UUIDField(primary_key=True)
     job_type = models.CharField(max_length=80)
-    payload_json = models.JSONField()
+    payload_json = PsycopgCompatibleJSONField()
     status = models.CharField(max_length=20)
     available_at = models.DateTimeField()
     locked_at = models.DateTimeField(null=True)
@@ -507,7 +528,7 @@ class SecurityEvent(ExistingTaskillerModel):
     event_type = models.CharField(max_length=100)
     subject_hash = models.CharField(max_length=64, null=True)
     user_agent = models.CharField(max_length=300, null=True)
-    metadata_json = models.JSONField()
+    metadata_json = PsycopgCompatibleJSONField()
     created_at = models.DateTimeField()
 
     class Meta(ExistingTaskillerModel.Meta):
