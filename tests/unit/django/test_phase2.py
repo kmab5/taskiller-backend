@@ -14,7 +14,7 @@ from django.contrib import admin
 from taskiller.django_domain import models as domain
 
 
-def test_all_existing_domain_models_are_unmanaged() -> None:
+def test_all_existing_domain_models_are_django_managed() -> None:
     models = [
         model
         for model in domain.ExistingTaskillerModel.__subclasses__()
@@ -22,7 +22,7 @@ def test_all_existing_domain_models_are_unmanaged() -> None:
     ]
 
     assert models
-    assert all(model._meta.managed is False for model in models)
+    assert all(model._meta.managed is True for model in models)
 
 
 def test_composite_primary_keys_match_existing_tables() -> None:
