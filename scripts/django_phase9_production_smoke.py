@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
 from uuid import uuid4
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taskiller.django_project.settings")
@@ -91,7 +92,8 @@ def main() -> None:
     end = datetime.now(UTC) + timedelta(minutes=1)
     start = end - timedelta(hours=1)
     analytics = client.get(
-        f"/api/v1/analytics/summary?from={start.isoformat()}&to={end.isoformat()}",
+        "/api/v1/analytics/summary?"
+        + urlencode({"from": start.isoformat(), "to": end.isoformat()}),
         **auth,
     )
     if analytics.status_code != 200:
