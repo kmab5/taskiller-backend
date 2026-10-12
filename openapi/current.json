@@ -6175,6 +6175,42 @@
         ]
       }
     },
+    "/api/v1/portable-work/import": {
+      "post": {
+        "operationId": "importPortableWork",
+        "tags": [
+          "Work"
+        ],
+        "summary": "Import Portable Work",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{projectId}/next-action": {
       "get": {
         "operationId": "getProjectNextAction",

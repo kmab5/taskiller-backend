@@ -89,7 +89,12 @@ def main() -> None:
         key for key in django_ops if key[0].startswith("/api/v1/") and key not in api_expected
     ]
     if unexpected:
-        errors.append(f"unexpected Django API operations: {unexpected!r}")
+        errors.append(
+            f"unexpected Django API operations: {unexpected!r}\n"
+            "New Django endpoints must be intentionally documented in "
+            "openapi/current.json (matching path, method, operationId, tags "
+            "and security). Do not disable this check."
+        )
 
     executor = MigrationExecutor(connection)
     targets = executor.loader.graph.leaf_nodes()
