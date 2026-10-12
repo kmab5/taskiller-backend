@@ -1,6 +1,6 @@
 from django.urls import path
 
-from taskiller.django_api import analytics_views, execution_views, focus_views, views, work_views
+from taskiller.django_api import analytics_views, execution_views, focus_views, portable_views, views, work_views
 
 urlpatterns = [
     path("api/v1/auth/register", views.RegisterView.as_view()),
@@ -43,6 +43,7 @@ urlpatterns = [
         "api/v1/exports/<uuid:exportRequestId>/download",
         views.ExportDownloadView.as_view(),
     ),
+    path("api/v1/portable-work/import", portable_views.PortableImportView.as_view()),
     path("api/v1/work-types", work_views.WorkTypesView.as_view()),
     path(
         "api/v1/work-types/<uuid:workTypeId>",

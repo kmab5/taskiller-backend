@@ -156,6 +156,8 @@ STORAGES = {
     },
 }
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 16 * 1024 * 1024
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SESSION_COOKIE_SECURE = TASKILLER_ENV == "production"
