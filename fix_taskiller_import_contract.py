@@ -3,6 +3,7 @@
 Run from the taskiller-backend repository root:
     python /path/to/fix_taskiller_import_contract.py
 """
+
 from __future__ import annotations
 
 import json
@@ -36,21 +37,26 @@ existing = canonical["paths"].get(endpoint, {}).get("post")
 if existing is None:
     canonical["paths"][endpoint] = {"post": operation}
     canonical["paths"] = dict(sorted(canonical["paths"].items()))
-    canonical_path.write_text(json.dumps(canonical, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    canonical_path.write_text(
+        json.dumps(canonical, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     print(f"Added POST {endpoint} to {canonical_path}")
-elif existing.get("operationId") == "importPortableWork" and existing.get("security") == operation["security"]:
+elif (
+    existing.get("operationId") == "importPortableWork"
+    and existing.get("security") == operation["security"]
+):
     print("Portable import contract already exists; left unchanged.")
 else:
     raise SystemExit(f"Existing contract for {endpoint} differs; inspect manually before updating.")
 
 checker = checker_path.read_text(encoding="utf-8")
 old = 'errors.append(f"unexpected Django API operations: {unexpected!r}")'
-new = '''errors.append(
+new = """errors.append(
             f"unexpected Django API operations: {unexpected!r}\\n"
             "New Django endpoints must be intentionally documented in "
             "openapi/current.json (matching path, method, operationId, tags "
             "and security). Do not disable this check."
-        )'''
+        )"""
 if old in checker:
     checker_path.write_text(checker.replace(old, new), encoding="utf-8")
     print("Improved contract-drift diagnostic.")
