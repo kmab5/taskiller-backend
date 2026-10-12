@@ -1,10 +1,21 @@
 """JSONB adapter regression: psycopg can return decoded Python JSON values."""
 
+# ruff: noqa: E402
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
+
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "taskiller.django_project.settings",
+)
+
+import django
+
+django.setup()
 
 from taskiller.django_domain import models as domain
 
