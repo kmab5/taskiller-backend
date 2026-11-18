@@ -1,8 +1,10 @@
 # ruff: noqa: E402
 from __future__ import annotations
 
+import importlib.util
 import os
 from contextlib import nullcontext
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
@@ -17,6 +19,15 @@ from django.db import OperationalError
 
 from taskiller.django_operations import worker_service as worker
 from taskiller.django_operations.management.commands import taskiller_worker as command
+
+
+def production_module():
+    path = Path(__file__).resolve().parents[3] / "scripts" / "run_django_production.py"
+    spec = importlib.util.spec_from_file_location("production_launcher_under_test", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_account_deletion_removes_dependents_before_parents(monkeypatch):
@@ -90,7 +101,7 @@ def test_account_deletion_removes_dependents_before_parents(monkeypatch):
 
 
 def test_parent_exits_when_worker_dies_and_stops_api(monkeypatch):
-    import scripts.run_django_production as production
+    production = production_module()
 
     worker_child = Mock()
     worker_child.poll.return_value = 7
@@ -193,7 +204,8 @@ def test_idle_worker_periodically_recovers_and_restores_retention(monkeypatch):
 
 def test_api_spawn_failure_terminates_already_started_worker(monkeypatch):
     import pytest
-    import scripts.run_django_production as production
+
+    production = production_module()
 
     child = Mock()
     child.poll.return_value = None
