@@ -27,11 +27,13 @@ and the expected adopted tables.
 Set these only for the bootstrap operation:
 
 ```text
+TASKILLER_ADMIN_USERNAME=<admin login>
 TASKILLER_ADMIN_EMAIL=<admin email>
 TASKILLER_ADMIN_PASSWORD=<strong temporary secret>
 ```
 
-Run:
+Production startup now runs bootstrap automatically when the password is configured.
+For a manual bootstrap, run:
 
 ```bash
 PYTHONPATH=src uv run python manage.py bootstrap_taskiller_admin

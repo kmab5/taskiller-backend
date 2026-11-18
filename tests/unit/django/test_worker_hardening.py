@@ -228,3 +228,19 @@ def test_api_spawn_failure_terminates_already_started_worker(monkeypatch):
     with pytest.raises(OSError):
         production.main()
     child.terminate.assert_called_once()
+
+
+def test_admin_bootstrap_failure_stops_startup_before_children(monkeypatch):
+    import pytest
+
+    production = production_module()
+    run = Mock(side_effect=[SimpleNamespace(returncode=0), SimpleNamespace(returncode=2)])
+    spawn = Mock(side_effect=AssertionError("started children before admin bootstrap"))
+    monkeypatch.setattr(production.subprocess, "run", run)
+    monkeypatch.setattr(production, "_spawn", spawn)
+    with pytest.raises(SystemExit) as error:
+        production.main()
+    assert error.value.code == 2
+    assert "bootstrap_taskiller_admin" in run.call_args_list[1].args[0]
+    assert "--if-configured" in run.call_args_list[1].args[0]
+    spawn.assert_not_called()

@@ -30,6 +30,19 @@ def main() -> None:
     if migrate.returncode != 0:
         raise SystemExit(migrate.returncode)
 
+    bootstrap = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "manage.py"),
+            "bootstrap_taskiller_admin",
+            "--if-configured",
+        ],
+        cwd=ROOT,
+        check=False,
+    )
+    if bootstrap.returncode != 0:
+        raise SystemExit(bootstrap.returncode)
+
     settings = get_settings()
     children: list[subprocess.Popen[bytes]] = []
 

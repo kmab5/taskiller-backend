@@ -23,6 +23,24 @@ Keep these in Render environment settings:
 
 Trust forwarded addresses only behind the intended proxy. Keep credentials out of `.env.example`, Git, and logs. Rotate the token-HMAC secret deliberately: pending email jobs reconstruct tokens from it, so rotation invalidates them along with other opaque credentials.
 
+## Django Admin account
+
+Set `TASKILLER_ADMIN_USERNAME`, `TASKILLER_ADMIN_EMAIL`, and `TASKILLER_ADMIN_PASSWORD`
+in Render's environment settings. The password must contain at least 12 characters.
+The production launcher creates or updates this Django superuser after migrations,
+before the API and worker start. Sign in at `/admin/` using the configured username
+and password. This account is separate from regular Taskiller API users.
+
+If the username is omitted, the email is used as the login for compatibility.
+Remove `TASKILLER_ADMIN_PASSWORD` after a successful bootstrap; subsequent restarts
+skip bootstrap and keep the stored account. Leaving it configured reapplies those
+credentials and superuser permissions on every restart. To reset the password,
+set a new value and redeploy. Keep the username stable to update the same account.
+
+For local setup, set these variables in `.env` and run
+`PYTHONPATH=src uv run python manage.py bootstrap_taskiller_admin` explicitly.
+Local `runserver` does not bootstrap an account automatically.
+
 ## Database changes
 
 Use committed Django migrations only. New databases include uniqueness constraints, ownership/hierarchy guards, append-only history, and queue indexes. Startup uses a transaction-scoped PostgreSQL advisory lock, compatible with transaction pooling. Current migrations are transactional; review this runner before introducing nontransactional DDL.

@@ -9,10 +9,21 @@ from django.core.management.base import BaseCommand, CommandError
 class Command(BaseCommand):
     help = "Create/update the Django Admin superuser from environment variables."
 
+    def add_arguments(self, parser) -> None:
+        parser.add_argument(
+            "--if-configured",
+            action="store_true",
+            help="Skip bootstrap when TASKILLER_ADMIN_PASSWORD is absent (for startup).",
+        )
+
     def handle(self, *args, **options) -> None:
-        del args, options
+        del args
         email = os.getenv("TASKILLER_ADMIN_EMAIL", "").strip().casefold()
         password = os.getenv("TASKILLER_ADMIN_PASSWORD", "")
+
+        if options.get("if_configured") and not password:
+            self.stdout.write("Django Admin bootstrap skipped: no admin password configured.")
+            return
 
         if not email:
             raise CommandError("TASKILLER_ADMIN_EMAIL is required")
@@ -20,7 +31,8 @@ class Command(BaseCommand):
             raise CommandError("TASKILLER_ADMIN_PASSWORD must contain at least 12 characters")
 
         User = get_user_model()
-        lookup = {User.USERNAME_FIELD: email}
+        username = os.getenv("TASKILLER_ADMIN_USERNAME", "").strip() or email
+        lookup = {User.USERNAME_FIELD: username}
         user, created = User.objects.get_or_create(
             **lookup,
             defaults={
@@ -34,8 +46,10 @@ class Command(BaseCommand):
         user.is_staff = True
         user.is_superuser = True
         user.is_active = True
-        user.set_password(password)
+        # Avoid rehashing an unchanged password on every service restart.
+        if not user.check_password(password):
+            user.set_password(password)
         user.save()
 
         action = "created" if created else "updated"
-        self.stdout.write(self.style.SUCCESS(f"Django Admin superuser {action}: {email}"))
+        self.stdout.write(self.style.SUCCESS(f"Django Admin superuser {action}: {username}"))
