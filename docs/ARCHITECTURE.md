@@ -5,11 +5,11 @@ Taskiller is a **modular monolith** with a client-independent REST API. The web 
 ## Chosen stack
 
 - Python 3.14
-- FastAPI
+- Django 5.2 LTS / Django REST Framework
 - Pydantic v2 / pydantic-settings
-- SQLAlchemy 2 async ORM/Core
+- Django ORM
 - psycopg 3
-- Alembic
+- Django migrations
 - PostgreSQL (Neon in production; PostgreSQL 18 locally/CI)
 - pytest + pytest-asyncio
 - Ruff
@@ -17,7 +17,8 @@ Taskiller is a **modular monolith** with a client-independent REST API. The web 
 - uv
 - Docker/OCI
 - GitHub Actions
-- Koyeb for the API
+- Render Free for Django ASGI and the embedded worker; Vercel hosts the web client
+- Mailjet HTTPS authentication mail; external five-minute uptime checks
 
 ## Domain modules
 
@@ -38,7 +39,7 @@ The Python application owns both Taskiller identity/session state and domain sta
 ## Rules
 
 - Business logic stays outside HTTP route functions.
-- SQLAlchemy models do not double as public API schemas.
+- Django models do not double as public API schemas.
 - Domain modules own their repositories/tables.
 - UTC is stored server-side; user timezone is an IANA string.
 - No Redis or microservices are introduced for v1 correctness.
@@ -49,6 +50,8 @@ The Python application owns both Taskiller identity/session state and domain sta
 
 All eight planned backend rounds are implemented. The modular-monolith boundary remains unchanged: PostgreSQL is the sole durable source of truth, Focus recommendations are deterministic/versioned, Execution uses append-only Events plus aggregate state, Analytics derives from immutable historical snapshots, and Operations provides privacy lifecycle, rate limiting and the PostgreSQL outbox.
 
-The API process and outbox worker use the same code/image. Production should deploy them as separate Koyeb Services; an embedded worker mode exists only to support one-service hobby/free deployments. Deploy-time Alembic migration is serialized with a PostgreSQL advisory lock, and readiness refuses traffic unless the database is at the release's expected revision.
+The API and outbox worker share one Render Free service and image. External five-minute uptime checks keep it awake. The launcher supervises both processes. Django migrations run under a transaction-scoped advisory lock, and readiness checks database connectivity and pending migrations. No paid worker, broker, or cache is required.
 
-Cross-cutting production controls now include request IDs, structured JSON logging, trusted-host/CORS startup validation, security headers, stable Problem codes, OpenAPI authorization auditing and CI migration roundtrips.
+Queue processing uses unique claim fences, periodic lease recovery, and atomic effects/acknowledgement. Exports use repeatable-read snapshots; authentication mail jobs store references and reconstruct tokens with a server-side HMAC. Current migrations establish database uniqueness, ownership/hierarchy, and immutable-history rules independently of the archived FastAPI implementation.
+
+Cross-cutting controls include request IDs, sanitized JSON logging, browser-origin enforcement, trusted-host/CORS configuration, authentication budgets, security headers, Problem codes, and contract/database-invariant regression tests. The original framework transition occurred before real users; current validation is recorded in root `VALIDATION.md`.

@@ -20,6 +20,7 @@ from taskiller.django_domain.models import (
     FocusPlan,
     FocusPlanRecommendation,
     FocusPlanSegment,
+    TaskillerUser,
     UserPreferences,
     WorkItem,
     WorkType,
@@ -173,6 +174,7 @@ class DjangoFocusService:
         request_body = _dump(payload)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             replay = claim_idempotency(
                 owner_id=self.owner_id,
                 scope="focus-plan-recommendations:create",
@@ -394,6 +396,7 @@ class DjangoFocusService:
         request_body = _dump(payload)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             replay = claim_idempotency(
                 owner_id=self.owner_id,
                 scope="focus-plans:create",
@@ -504,6 +507,7 @@ class DjangoFocusService:
         if_match: str | None,
     ) -> dict[str, Any]:
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             row = self._focus_plan(focus_plan_id, lock=True)
             if row is None:
                 raise self._not_found(
@@ -559,6 +563,7 @@ class DjangoFocusService:
         if_match: str | None,
     ) -> None:
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             row = self._focus_plan(focus_plan_id, lock=True)
             if row is None:
                 raise self._not_found(
@@ -742,8 +747,18 @@ class DjangoFocusService:
         try:
             padded = cursor + "=" * (-len(cursor) % 4)
             raw = base64.urlsafe_b64decode(padded.encode())
-            created, row_id = json.loads(raw)
-            return datetime.fromisoformat(created), UUID(row_id)
+            value = json.loads(raw)
+            if (
+                not isinstance(value, list)
+                or len(value) != 2
+                or not all(isinstance(item, str) for item in value)
+            ):
+                raise ValueError("invalid cursor structure")
+            created, row_id = value
+            at = datetime.fromisoformat(created)
+            if at.tzinfo is None or at.utcoffset() is None:
+                raise ValueError("cursor timestamp must include a timezone")
+            return at, UUID(row_id)
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             raise TaskillerAPIError(
                 422,

@@ -6,6 +6,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from taskiller.core.config import get_settings
@@ -32,56 +33,62 @@ def main() -> None:
     settings = get_settings()
     children: list[subprocess.Popen[bytes]] = []
 
-    if settings.embedded_worker_enabled:
-        children.append(
-            _spawn(
-                [
-                    sys.executable,
-                    str(ROOT / "manage.py"),
-                    "taskiller_worker",
-                ]
+    try:
+        if settings.embedded_worker_enabled:
+            children.append(
+                _spawn(
+                    [
+                        sys.executable,
+                        str(ROOT / "manage.py"),
+                        "taskiller_worker",
+                    ]
+                )
             )
+
+        port = os.environ.get("PORT", "8000")
+        api = _spawn(
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "taskiller.django_project.asgi:application",
+                "--app-dir",
+                "src",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                port,
+                "--proxy-headers",
+                "--no-access-log",
+            ]
         )
+        children.append(api)
 
-    port = os.environ.get("PORT", "8000")
-    api = _spawn(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "taskiller.django_project.asgi:application",
-            "--app-dir",
-            "src",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            port,
-            "--proxy-headers",
-        ]
-    )
-    children.append(api)
+        def stop(signum: int, _frame: object) -> None:
+            for child in children:
+                if child.poll() is None:
+                    child.send_signal(signum)
 
-    def stop(signum: int, _frame: object) -> None:
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
+
+        while True:
+            for child in children:
+                code = child.poll()
+                if code is not None:
+                    # A clean worker exit is still a service failure.
+                    raise SystemExit(code if child is api else (code or 1))
+            time.sleep(0.25)
+    finally:
         for child in children:
             if child.poll() is None:
-                child.send_signal(signum)
-
-    signal.signal(signal.SIGTERM, stop)
-    signal.signal(signal.SIGINT, stop)
-
-    code = api.wait()
-    for child in children:
-        if child is api:
-            continue
-        if child.poll() is None:
-            child.terminate()
-    for child in children:
-        if child is not api:
+                child.terminate()
+        for child in children:
             try:
                 child.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 child.kill()
-    raise SystemExit(code)
+                child.wait()
 
 
 if __name__ == "__main__":

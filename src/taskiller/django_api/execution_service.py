@@ -162,6 +162,7 @@ class DjangoExecutionService:
         request_body = payload.model_dump(mode="json", by_alias=True)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             replay = claim_idempotency(
                 owner_id=self.owner_id,
                 scope="execution-sessions:start",
@@ -172,7 +173,20 @@ class DjangoExecutionService:
             if replay is not None:
                 return replay.response_body
 
-            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
+            if ExecutionSession.objects.filter(
+                owner_id=self.owner_id,
+                state__in=[
+                    ExecutionSessionState.RUNNING.value,
+                    ExecutionSessionState.PAUSED.value,
+                ],
+            ).exists():
+                raise TaskillerAPIError(
+                    409,
+                    "open_session_exists",
+                    "Another Session is already open",
+                    "Complete or abandon the existing Session before starting another.",
+                )
+
             work_item = (
                 WorkItem.objects.select_for_update()
                 .filter(
@@ -236,6 +250,8 @@ class DjangoExecutionService:
                     "empty_focus_plan",
                     "Focus Plan has no segments",
                 )
+
+            self._validate_segment_work_items(work_item, segments)
 
             recommendation_id = payload.recommendation_id or focus_plan.recommendation_id
             recommendation_snapshot: dict[str, object] | None = None
@@ -359,6 +375,45 @@ class DjangoExecutionService:
                 resource_id=row.id,
             )
             return response
+
+    def _validate_segment_work_items(
+        self,
+        target: WorkItem,
+        segments: list[FocusPlanSegment],
+    ) -> None:
+        # The caller holds the owner namespace and plan lock. Work moves/deletes
+        # acquire that namespace first; focus writers do too before replacing segments.
+        linked_ids = {segment.linked_work_item_id for segment in segments}
+        linked_ids.discard(None)
+        if not linked_ids:
+            return
+        rows = list(
+            WorkItem.objects.select_for_update()
+            .filter(id__in=linked_ids, owner_id=self.owner_id, deleted_at__isnull=True)
+            .order_by("id")
+        )
+        if {row.id for row in rows} != linked_ids or any(
+            row.kind != WorkItemKind.CHORE.value
+            or (
+                row.id != target.id
+                if target.kind == WorkItemKind.CHORE.value
+                else row.parent_id != target.id
+            )
+            for row in rows
+        ):
+            raise TaskillerAPIError(
+                422,
+                "invalid_focus_plan_link",
+                "Invalid linked work item",
+                "Every linked item must be a live caller-owned Chore belonging to the plan target.",
+            )
+        if any(row.status in _TERMINAL_WORK_STATES for row in rows):
+            raise TaskillerAPIError(
+                409,
+                "work_item_terminal",
+                "Work item is terminal",
+                "Completed, cancelled, or archived linked work cannot start a new Session.",
+            )
 
     def get_active_session(self) -> dict[str, object]:
         row = (
@@ -574,6 +629,7 @@ class DjangoExecutionService:
         request_body = payload.model_dump(mode="json", by_alias=True)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             session = self._session(session_id, lock=True)
             if session is None:
                 raise self._not_found(
@@ -967,6 +1023,12 @@ class DjangoExecutionService:
         try:
             padded = cursor + "=" * (-len(cursor) % 4)
             value = json.loads(base64.urlsafe_b64decode(padded.encode()).decode())
+            if (
+                not isinstance(value, list)
+                or len(value) != 2
+                or not all(isinstance(item, str) for item in value)
+            ):
+                raise ValueError("invalid cursor structure")
             at = datetime.fromisoformat(value[0])
             if at.tzinfo is None or at.utcoffset() is None:
                 raise ValueError

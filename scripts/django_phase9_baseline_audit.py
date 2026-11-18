@@ -66,12 +66,45 @@ def main() -> None:
             if int(cursor.fetchone()[0]) < 1:
                 errors.append("django_domain baseline not recorded in django_migrations")
 
+        for model in apps.get_app_config("django_domain").get_models():
+            if model._meta.db_table not in tables:
+                continue
+            actual = connection.introspection.get_constraints(cursor, model._meta.db_table)
+            for declared in [*model._meta.constraints, *model._meta.indexes]:
+                if declared.name not in actual:
+                    errors.append(f"missing database constraint/index: {declared.name}")
+
+        cursor.execute("""
+            SELECT tgname FROM pg_trigger
+            WHERE NOT tgisinternal AND tgenabled <> 'D'
+            AND tgrelid IN (
+                SELECT oid FROM pg_class WHERE relnamespace = current_schema()::regnamespace
+            )
+        """)
+        actual_triggers = {row[0] for row in cursor.fetchall()}
+        for table in (
+            "work_items",
+            "focus_plan_recommendations",
+            "focus_plans",
+            "focus_plan_segments",
+            "execution_sessions",
+            "session_events",
+            "session_reviews",
+        ):
+            name = f"tk_{table}_relationships"
+            if name not in actual_triggers:
+                errors.append(f"missing database trigger: {name}")
+        if "tk_session_event_history" not in actual_triggers:
+            errors.append("missing database trigger: tk_session_event_history")
+        if "tk_security_event_history" not in actual_triggers:
+            errors.append("missing database trigger: tk_security_event_history")
+
     if errors:
         raise SystemExit("\n".join(f"- {error}" for error in errors))
 
     print(
         "Django baseline audit OK: committed baseline, managed models, "
-        "adopted schema, no pending migrations"
+        "constraints/indexes/triggers present, no pending migrations"
     )
 
 

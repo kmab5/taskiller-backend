@@ -59,6 +59,7 @@ def request_data_export(
 ) -> DataExportRequest:
     settings = taskiller_settings()
     with transaction.atomic():
+        TaskillerUser.objects.select_for_update().get(id=user_id)
         replay = claim_idempotency(
             owner_id=user_id,
             scope="data-export:create",
@@ -147,9 +148,9 @@ def schedule_account_deletion(
         )
 
         sessions = list(
-            AuthSession.objects.select_for_update().filter(
-                user_id=locked_user.id, revoked_at__isnull=True
-            )
+            AuthSession.objects.select_for_update()
+            .filter(user_id=locked_user.id, revoked_at__isnull=True)
+            .order_by("id")
         )
         for session in sessions:
             session.revoked_at = now

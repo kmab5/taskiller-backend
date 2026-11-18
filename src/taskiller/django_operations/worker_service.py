@@ -15,12 +15,14 @@ from taskiller.core.time import utc_now
 from taskiller.django_api.runtime import taskiller_settings
 from taskiller.django_domain.models import (
     AccountDeletionRequest,
+    AuthSession,
     DataExportRequest,
     EmailVerificationToken,
     ExecutionSession,
     FocusPlan,
     FocusPlanRecommendation,
     FocusPlanSegment,
+    IdempotencyRecord,
     OutboxJob,
     PasswordResetToken,
     RefreshToken,
@@ -57,37 +59,41 @@ def _model_dict(row: Any, *, exclude: set[str] | None = None) -> dict[str, Any]:
 
 def recover_expired_leases() -> int:
     now = utc_now()
-    return OutboxJob.objects.filter(
-        status="running",
-        lease_expires_at__lte=now,
-    ).update(
-        status="queued",
-        locked_at=None,
-        locked_by=None,
-        lease_expires_at=None,
-        available_at=now,
-        updated_at=now,
-    )
+    recovered = 0
+    with transaction.atomic():
+        jobs = (
+            OutboxJob.objects.select_for_update(skip_locked=True)
+            .filter(status="running", lease_expires_at__lte=now)
+            .order_by("id")
+        )
+        for job in jobs:
+            _fail_locked_job(job, RuntimeError("lease expired"))
+            recovered += 1
+    return recovered
 
 
-def ensure_retention_job() -> None:
+def ensure_retention_job(*, exclude_job_id: UUID | None = None, available_at=None) -> None:
     settings = taskiller_settings()
     with transaction.atomic():
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT pg_advisory_xact_lock(hashtext('taskiller-retention-scheduler'))"
             )
-        if not OutboxJob.objects.filter(
-            job_type="retention",
-            status__in=["queued", "running"],
-        ).exists():
+        if (
+            not OutboxJob.objects.filter(
+                job_type="retention",
+                status__in=["queued", "running"],
+            )
+            .exclude(id=exclude_job_id)
+            .exists()
+        ):
             now = utc_now()
             OutboxJob.objects.create(
                 id=uuid4(),
                 job_type="retention",
                 payload_json={},
                 status="queued",
-                available_at=now,
+                available_at=available_at or now,
                 locked_at=None,
                 locked_by=None,
                 lease_expires_at=None,
@@ -100,7 +106,7 @@ def ensure_retention_job() -> None:
             )
 
 
-def claim_job(worker: str) -> UUID | None:
+def claim_job(worker: str, *, with_token: bool = False) -> UUID | tuple[UUID, str] | None:
     settings = taskiller_settings()
     now = utc_now()
     with transaction.atomic():
@@ -114,12 +120,12 @@ def claim_job(worker: str) -> UUID | None:
             return None
         job.status = "running"
         job.locked_at = now
-        job.locked_by = worker
+        job.locked_by = str(uuid4())
         job.lease_expires_at = now + timedelta(seconds=settings.outbox_lease_seconds)
         job.attempts += 1
         job.updated_at = now
         job.save()
-        return job.id
+        return (job.id, job.locked_by) if with_token else job.id
 
 
 def _build_export_archive(export: DataExportRequest) -> None:
@@ -186,13 +192,35 @@ def _hard_delete_account(deletion: AccountDeletionRequest) -> None:
     deletion.started_at = deletion.started_at or utc_now()
     deletion.save(update_fields=["status", "started_at"])
 
-    ExecutionSession.objects.filter(owner_id=deletion.user_id).delete()
+    user_id = deletion.user_id
+    with connection.cursor() as cursor:
+        cursor.execute("SET LOCAL taskiller.account_deletion = 'on'")
+    # Relations deliberately use DO_NOTHING. Delete leaves explicitly, including
+    # self-referencing refresh rotations before their sessions.
+    SessionEvent.objects.filter(owner_id=user_id).delete()
+    SessionReview.objects.filter(owner_id=user_id).delete()
+    ExecutionSession.objects.filter(owner_id=user_id).delete()
+    FocusPlanSegment.objects.filter(focus_plan__owner_id=user_id).delete()
+    FocusPlan.objects.filter(owner_id=user_id).delete()
+    FocusPlanRecommendation.objects.filter(owner_id=user_id).delete()
     for kind in ("chore", "sprint", "project"):
-        WorkItem.objects.filter(
-            owner_id=deletion.user_id,
-            kind=kind,
-        ).delete()
-    TaskillerUser.objects.filter(id=deletion.user_id).delete()
+        WorkItem.objects.filter(owner_id=user_id, kind=kind).delete()
+    WorkType.objects.filter(owner_id=user_id).delete()
+    # Refresh locks session before token. Materialize these locks in stable order
+    # before token UPDATE/DELETE so deletion cannot invert that ordering.
+    list(AuthSession.objects.select_for_update().filter(user_id=user_id).order_by("id"))
+    tokens = RefreshToken.objects.filter(session__user_id=user_id)
+    RefreshToken.objects.filter(replaced_by_id__in=tokens.values("id")).update(replaced_by=None)
+    tokens.delete()
+    AuthSession.objects.filter(user_id=user_id).delete()
+    EmailVerificationToken.objects.filter(user_id=user_id).delete()
+    PasswordResetToken.objects.filter(user_id=user_id).delete()
+    UserPreferences.objects.filter(user_id=user_id).delete()
+    DataExportRequest.objects.filter(user_id=user_id).delete()
+    IdempotencyRecord.objects.filter(owner_id=user_id).delete()
+    # Do not lock auth_email outbox rows here: delivery holds its own job lock
+    # before reading the owner. The delivery hook discards missing/inactive users.
+    TaskillerUser.objects.filter(id=user_id).delete()
 
     deletion.status = "completed"
     deletion.completed_at = utc_now()
@@ -214,7 +242,9 @@ def _run_retention() -> None:
             [now - timedelta(seconds=settings.rate_limit_bucket_retention_seconds)],
         )
 
-    RefreshToken.objects.filter(expires_at__lte=now).delete()
+    expired = RefreshToken.objects.filter(expires_at__lte=now)
+    RefreshToken.objects.filter(replaced_by_id__in=expired.values("id")).update(replaced_by=None)
+    expired.delete()
     EmailVerificationToken.objects.filter(expires_at__lte=now).delete()
     PasswordResetToken.objects.filter(expires_at__lte=now).delete()
 
@@ -239,102 +269,135 @@ def _run_retention() -> None:
     ).delete()
 
 
-def process_job(job_id: UUID) -> None:
-    settings = taskiller_settings()
-    with transaction.atomic():
-        job = OutboxJob.objects.select_for_update().get(id=job_id)
+def _owns_claim(job: OutboxJob, claim_token: str | None) -> bool:
+    if claim_token is None:
+        # Legacy direct calls may process queued jobs, but cannot acknowledge a claim.
+        return job.status == "queued" and job.locked_by is None
+    return (
+        job.status == "running"
+        and job.locked_by == claim_token
+        and job.lease_expires_at is not None
+        and job.lease_expires_at > utc_now()
+    )
 
-        if job.job_type == "data_export":
-            export_id = UUID(str(job.payload_json["exportRequestId"]))
-            export = DataExportRequest.objects.select_for_update().filter(id=export_id).first()
-            if export is None:
-                return
+
+def process_job(job_id: UUID, *, claim_token: str | None = None) -> bool:
+    """Commit effects and acknowledgement together; retry serialization errors via the queue.
+
+    A fresh REPEATABLE READ transaction is required so every export query uses
+    one snapshot, including concurrent writes through uncoordinated API paths.
+    """
+    if connection.in_atomic_block:
+        raise RuntimeError("process_job requires a fresh transaction")
+    job_type = OutboxJob.objects.values_list("job_type", flat=True).get(id=job_id)
+    with transaction.atomic():
+        if job_type == "data_export":
+            with connection.cursor() as cursor:
+                cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        job = OutboxJob.objects.select_for_update().get(id=job_id)
+        if job.job_type != job_type:
+            raise RuntimeError("job type changed during processing")
+        if not _owns_claim(job, claim_token):
+            return False
+        _process_locked_job(job)
+        _finish_locked_job(job)
+        return True
+
+
+def _process_locked_job(job: OutboxJob) -> None:
+    if job.job_type == "data_export":
+        export_id = UUID(str(job.payload_json["exportRequestId"]))
+        export = DataExportRequest.objects.select_for_update().filter(id=export_id).first()
+        if export is not None and export.status != "ready":
             export.status = "processing"
             export.started_at = export.started_at or utc_now()
             export.save(update_fields=["status", "started_at"])
             _build_export_archive(export)
-            return
-
-        if job.job_type == "account_delete":
-            request_id = UUID(str(job.payload_json["requestId"]))
-            deletion = (
-                AccountDeletionRequest.objects.select_for_update().filter(id=request_id).first()
-            )
-            if deletion is None or deletion.status == "completed":
-                return
+        return
+    if job.job_type == "account_delete":
+        request_id = UUID(str(job.payload_json["requestId"]))
+        # Match application ordering: owner before deletion request/dependent rows.
+        user_id = job.payload_json.get("userId")
+        if user_id is not None:
+            TaskillerUser.objects.select_for_update().filter(id=user_id).first()
+        deletion = AccountDeletionRequest.objects.select_for_update().filter(id=request_id).first()
+        if deletion is not None and deletion.status != "completed":
             _hard_delete_account(deletion)
-            return
+        return
+    if job.job_type == "auth_email":
+        from taskiller.django_operations.email_delivery import deliver_auth_email
 
-        if job.job_type == "retention":
-            _run_retention()
-            now = utc_now()
-            OutboxJob.objects.create(
-                id=uuid4(),
-                job_type="retention",
-                payload_json={},
-                status="queued",
-                available_at=now + timedelta(hours=24),
-                locked_at=None,
-                locked_by=None,
-                lease_expires_at=None,
-                attempts=0,
-                max_attempts=settings.outbox_max_attempts,
-                last_error=None,
-                created_at=now,
-                updated_at=now,
-                completed_at=None,
-            )
-            return
-
-        raise RuntimeError(f"unsupported outbox job type: {job.job_type}")
+        deliver_auth_email(job.payload_json)
+        return
+    if job.job_type == "retention":
+        _run_retention()
+        ensure_retention_job(exclude_job_id=job.id, available_at=utc_now() + timedelta(hours=24))
+        return
+    raise RuntimeError(f"unsupported outbox job type: {job.job_type}")
 
 
-def finish_job(job_id: UUID) -> None:
+def _finish_locked_job(job: OutboxJob) -> None:
+    now = utc_now()
+    job.status = "succeeded"
+    job.completed_at = now
+    job.updated_at = now
+    job.locked_at = None
+    job.locked_by = None
+    job.lease_expires_at = None
+    job.last_error = None
+    job.save(
+        update_fields=[
+            "status",
+            "completed_at",
+            "updated_at",
+            "locked_at",
+            "locked_by",
+            "lease_expires_at",
+            "last_error",
+        ]
+    )
+
+
+def finish_job(job_id: UUID, *, claim_token: str | None = None) -> bool:
+    """Compatibility acknowledgement: queued direct calls only without a fence."""
     with transaction.atomic():
         job = OutboxJob.objects.select_for_update().get(id=job_id)
-        now = utc_now()
-        job.status = "succeeded"
-        job.completed_at = now
-        job.updated_at = now
-        job.locked_at = None
-        job.locked_by = None
-        job.lease_expires_at = None
-        job.last_error = None
-        job.save()
+        if not _owns_claim(job, claim_token):
+            return False
+        _finish_locked_job(job)
+        return True
 
 
-def fail_job(job_id: UUID, error: Exception) -> None:
-    with transaction.atomic():
-        job = OutboxJob.objects.select_for_update().get(id=job_id)
-        now = utc_now()
-        terminal = job.attempts >= job.max_attempts
-        job.status = "dead" if terminal else "queued"
-        job.available_at = now + timedelta(
-            seconds=min(
-                300,
-                2 ** max(0, job.attempts - 1) * 5,
-            )
+def _fail_locked_job(job: OutboxJob, error: Exception) -> None:
+    now = utc_now()
+    terminal = job.attempts >= job.max_attempts
+    job.status = "dead" if terminal else "queued"
+    job.available_at = now + timedelta(seconds=min(300, 2 ** min(6, max(0, job.attempts - 1)) * 5))
+    job.completed_at = now if terminal else None
+    job.updated_at = now
+    job.locked_at = None
+    job.locked_by = None
+    job.lease_expires_at = None
+    # Provider exceptions may contain credentials/links: never persist them.
+    job.last_error = type(error).__name__
+    job.save()
+    if terminal and job.job_type == "data_export":
+        DataExportRequest.objects.filter(id=job.payload_json["exportRequestId"]).update(
+            status="failed", failure_code="export_generation_failed"
         )
-        job.completed_at = now if terminal else None
-        job.updated_at = now
-        job.locked_at = None
-        job.locked_by = None
-        job.lease_expires_at = None
-        job.last_error = f"{type(error).__name__}: {error}"[:2000]
-        job.save()
+    if terminal and job.job_type == "account_delete":
+        AccountDeletionRequest.objects.filter(id=job.payload_json["requestId"]).update(
+            status="failed", failure_code="account_deletion_failed"
+        )
 
-        if job.job_type == "data_export" and terminal:
-            export_id = UUID(str(job.payload_json["exportRequestId"]))
-            DataExportRequest.objects.filter(id=export_id).update(
-                status="failed",
-                failure_code="export_generation_failed",
-            )
-        if job.job_type == "account_delete" and terminal:
-            request_id = UUID(str(job.payload_json["requestId"]))
-            AccountDeletionRequest.objects.filter(id=request_id).update(
-                status="failed",
-                failure_code="account_deletion_failed",
-            )
+
+def fail_job(job_id: UUID, error: Exception, *, claim_token: str | None = None) -> bool:
+    with transaction.atomic():
+        job = OutboxJob.objects.select_for_update().get(id=job_id)
+        if not _owns_claim(job, claim_token):
+            return False
+        _fail_locked_job(job, error)
+        return True
 
 
 def worker_id() -> str:

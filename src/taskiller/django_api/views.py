@@ -112,6 +112,13 @@ class RegisterView(APIView):
         settings = taskiller_settings()
         enforce_rate_limit(
             request,
+            scope="auth_register_ip",
+            subject=request_subject(request),
+            limit=settings.auth_register_ip_limit,
+            window_seconds=settings.auth_register_ip_window_seconds,
+        )
+        enforce_rate_limit(
+            request,
             scope="auth_register",
             subject=request_subject(request, str(serializer.validated_data["email"])),
             limit=settings.auth_register_limit,
@@ -283,6 +290,18 @@ class RequestEmailVerificationView(APIView):
         responses={202: None},
     )
     def post(self, request: Request) -> Response:
+        settings = taskiller_settings()
+        for scope, subject in (
+            ("email_verification_ip", request_subject(request)),
+            ("email_verification_user", str(request.auth.user.id)),
+        ):
+            enforce_rate_limit(
+                request,
+                scope=scope,
+                subject=subject,
+                limit=settings.auth_email_verification_limit,
+                window_seconds=settings.auth_email_verification_window_seconds,
+            )
         _auth_service().request_email_verification(request.auth.user)
         return Response(status=202)
 
@@ -298,6 +317,14 @@ class ConfirmEmailVerificationView(APIView):
         responses={204: None},
     )
     def post(self, request: Request) -> Response:
+        settings = taskiller_settings()
+        enforce_rate_limit(
+            request,
+            scope="email_verification_confirm",
+            subject=request_subject(request),
+            limit=settings.auth_confirm_limit,
+            window_seconds=settings.auth_confirm_window_seconds,
+        )
         serializer = EmailVerificationConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         _auth_service().confirm_email_verification(serializer.validated_data["token"])
@@ -325,6 +352,19 @@ class RequestPasswordResetView(APIView):
             limit=settings.auth_password_reset_limit,
             window_seconds=settings.auth_password_reset_window_seconds,
         )
+        try:
+            enforce_rate_limit(
+                request,
+                scope="password_reset_recipient",
+                subject=str(serializer.validated_data["email"]).strip().casefold(),
+                limit=settings.auth_email_recipient_limit,
+                window_seconds=settings.auth_email_recipient_window_seconds,
+            )
+        except TaskillerAPIError as exc:
+            if exc.status_code != 429:
+                raise
+            # Keep recipient budget exhaustion indistinguishable from an unknown account.
+            return Response(status=202)
         _auth_service().request_password_reset(str(serializer.validated_data["email"]))
         return Response(status=202)
 
@@ -340,6 +380,14 @@ class ConfirmPasswordResetView(APIView):
         responses={204: None},
     )
     def post(self, request: Request) -> Response:
+        settings = taskiller_settings()
+        enforce_rate_limit(
+            request,
+            scope="password_reset_confirm",
+            subject=request_subject(request),
+            limit=settings.auth_confirm_limit,
+            window_seconds=settings.auth_confirm_window_seconds,
+        )
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         _auth_service().confirm_password_reset(

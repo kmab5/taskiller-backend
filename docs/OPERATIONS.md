@@ -2,22 +2,26 @@
 
 ## API and worker
 
-The FastAPI service remains stateless. Background work uses PostgreSQL, so v1 does not require Redis or another broker. Run at least one worker process alongside the API:
+Run `PYTHONPATH=src uv run python manage.py taskiller_worker` locally. Render runs the same command beside Django in one Free service. Keep external five-minute uptime checks enabled; no separate broker or paid worker is required.
 
-```bash
-PYTHONPATH=src python -m taskiller.operations.worker
-```
+Workers claim due jobs with `FOR UPDATE SKIP LOCKED`, a unique claim token, and a bounded lease. Database effects and success acknowledgement commit together. Stale claimants cannot finish/fail replacement claims. Recovery and retention scheduling run every 15 seconds, including idle polling. Exhausted attempts mark jobs dead and update export/deletion failure status. Database failures close stale connections and retry.
 
-Workers claim eligible jobs with `FOR UPDATE SKIP LOCKED`, increment the attempt counter, and hold a bounded lease. On process loss, the next worker recovers expired leases. Failed jobs use bounded exponential retry and become `dead` after `outbox_max_attempts`.
+Supervision detects child exits; readiness checks database/migrations. Neither detects every stalled live process. Inspect overdue jobs and logs when business work stops even if HTTP requests succeed.
 
-## Exports
+## Authentication mail
 
-`POST /api/v1/me/export-requests` queues a gzip-compressed JSON export. `GET /api/v1/me/export-requests/{id}` returns status and, when ready, a short-lived HMAC-signed download URL. Export bytes live in PostgreSQL only for the configured TTL; object storage can replace this later without changing the request/status API.
+Verification/reset requests atomically create token hashes and `auth_email` jobs. Jobs contain only token ID, user ID, and purpose. The worker reconstructs the token using a domain-separated HMAC and skips expired/consumed tokens or inactive/deleted users. Provider failures retry the same credential; a crash after provider acceptance may deliver a duplicate link. Mailjet must explicitly report success. No raw token is persisted in the queue.
 
-## Account deletion
+A per-user cooldown and PostgreSQL-backed IP/recipient budgets bound delivery. Resends preserve older usable links until expiration or successful confirmation; confirmation consumes sibling tokens. A 202 means queued or intentionally suppressed, not delivery confirmation. Investigate dead `auth_email` jobs if delivery stops.
 
-`DELETE /api/v1/me` requires the current user ETag. Taskiller marks the user inactive and revokes every auth session in the same transaction, then queues hard deletion after the configured grace period. Cascading FKs remove user-owned domain data. A minimal deletion tombstone and security events survive only for their retention windows.
+## Exports and account deletion
 
-## Rate limiting and audit
+Exports are gzip JSON stored temporarily in PostgreSQL. A repeatable-read transaction collects a consistent dataset and commits the archive with job success. The API issues short-lived HMAC-signed download links; retention clears expired archive bytes.
 
-Sensitive unauthenticated routes use PostgreSQL fixed-window counters keyed by HMAC(subject), not plaintext IP/email. Test environments skip limits unless `rate_limit_test_mode=true`. Security events are append-only; retention is the only database-authorized delete path.
+Account deletion requires a current user ETag, disables the user, revokes sessions, and schedules hard deletion after the grace period. The worker explicitly deletes dependent records in foreign-key order; it does not rely on legacy cascades. A minimal deletion tombstone and pseudonymized security history remain until retention. Delayed jobs resume after outages; free hosting cannot guarantee deadlines while unavailable.
+
+## Retention and investigation
+
+Retention runs daily and is independently re-established if its preceding job dies. It removes expired credentials/replay counters, archive bytes, old security events, tombstones, and finished-job history. Retention explicitly enables deletion of immutable security history; account deletion explicitly enables session-history deletion.
+
+Inspect `outbox_jobs` for dead jobs and running jobs with expired leases. Errors contain exception classes rather than potentially sensitive provider messages. Diagnose the cause before manually requeueing; never reset an in-progress claim. See `RUNBOOK.md` for SQL and release checks.

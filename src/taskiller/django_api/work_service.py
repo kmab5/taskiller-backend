@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from django.db import IntegrityError, transaction
-from django.db.models import Max, Q
+from django.db.models import F, Max, Q
 from pydantic import BaseModel, ValidationError
 
 from taskiller.core.time import utc_now
@@ -154,6 +154,7 @@ class DjangoWorkService:
         request_body = _dump(payload)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             replay = claim_idempotency(
                 owner_id=self.owner_id,
                 scope=scope,
@@ -217,6 +218,7 @@ class DjangoWorkService:
         if_match: str | None,
     ) -> dict[str, Any]:
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             row = (
                 WorkType.objects.select_for_update()
                 .filter(id=work_type_id)
@@ -276,6 +278,7 @@ class DjangoWorkService:
         if_match: str | None,
     ) -> None:
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             row = (
                 WorkType.objects.select_for_update()
                 .filter(id=work_type_id)
@@ -289,6 +292,13 @@ class DjangoWorkService:
             require_etag(
                 if_match,
                 make_etag("work-type", row.id, row.version),
+            )
+            # Include soft-deleted items: their foreign keys still constrain deletion.
+            # The owner namespace precedes both type and item locks on all writers.
+            WorkItem.objects.filter(work_type_id=row.id).update(
+                work_type_id=None,
+                version=F("version") + 1,
+                updated_at=utc_now(),
             )
             row.delete()
 
@@ -343,6 +353,7 @@ class DjangoWorkService:
         request_body = _dump(payload)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             replay = claim_idempotency(
                 owner_id=self.owner_id,
                 scope=scope,
@@ -423,6 +434,7 @@ class DjangoWorkService:
         if_match: str | None,
     ) -> dict[str, Any]:
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             row = self._locked_live_work_item(work_item_id)
             if row is None:
                 raise self._work_item_not_found()
@@ -508,6 +520,7 @@ class DjangoWorkService:
         if_match: str | None,
     ) -> None:
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             row = self._locked_live_work_item(work_item_id)
             if row is None:
                 raise self._work_item_not_found()
@@ -610,6 +623,7 @@ class DjangoWorkService:
         request_body = _dump(payload)
 
         with transaction.atomic():
+            TaskillerUser.objects.select_for_update().get(id=self.owner_id)
             replay = claim_idempotency(
                 owner_id=self.owner_id,
                 scope=scope,
@@ -1036,10 +1050,16 @@ class DjangoWorkService:
         try:
             padded = cursor + "=" * (-len(cursor) % 4)
             payload = json.loads(base64.urlsafe_b64decode(padded).decode())
-            created_at = datetime.fromisoformat(str(payload["createdAt"]))
+            if (
+                not isinstance(payload, dict)
+                or set(payload) != {"createdAt", "id"}
+                or not all(isinstance(value, str) for value in payload.values())
+            ):
+                raise ValueError("invalid cursor structure")
+            created_at = datetime.fromisoformat(payload["createdAt"])
             if created_at.tzinfo is None:
                 raise ValueError("cursor timestamp must include a timezone")
-            return created_at, UUID(str(payload["id"]))
+            return created_at, UUID(payload["id"])
         except (
             binascii.Error,
             KeyError,

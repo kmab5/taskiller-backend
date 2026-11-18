@@ -225,17 +225,18 @@ class MailjetEmailSender:
             raise RuntimeError("Mailjet Send API request failed") from exc
 
         if not raw:
-            return
+            raise RuntimeError("Mailjet Send API returned no acceptance")
         try:
             body = json.loads(raw)
         except (TypeError, ValueError) as exc:
             raise RuntimeError("Mailjet Send API returned invalid JSON") from exc
 
-        messages = body.get("Messages")
+        messages = body.get("Messages") if isinstance(body, dict) else None
         if not isinstance(messages, list) or not messages:
             raise RuntimeError("Mailjet Send API returned no message status")
-        status = str(messages[0].get("Status", "")).casefold()
-        if status and status != "success":
+        message = messages[0]
+        status = message.get("Status") if isinstance(message, dict) else None
+        if status != "success":
             raise RuntimeError("Mailjet Send API did not accept the email")
 
 

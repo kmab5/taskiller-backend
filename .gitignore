@@ -10,6 +10,7 @@ htmlcov/
 coverage.xml
 build/
 dist/
+staticfiles/
 *.egg-info/
 .DS_Store
 .vscode/

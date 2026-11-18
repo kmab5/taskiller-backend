@@ -28,6 +28,7 @@ class JsonFormatter(logging.Formatter):
         "process",
         "processName",
         "relativeCreated",
+        "request",
         "stack_info",
         "thread",
         "threadName",

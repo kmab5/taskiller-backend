@@ -3,13 +3,13 @@ from __future__ import annotations
 import time
 
 from django.core.management.base import BaseCommand
+from django.db import DatabaseError, close_old_connections, connections
 
 from taskiller.django_api.runtime import taskiller_settings
 from taskiller.django_operations.worker_service import (
     claim_job,
     ensure_retention_job,
     fail_job,
-    finish_job,
     process_job,
     recover_expired_leases,
     worker_id,
@@ -30,22 +30,30 @@ class Command(BaseCommand):
         del args
         settings = taskiller_settings()
         once = bool(options["once"])
-        recover_expired_leases()
-        ensure_retention_job()
         identity = worker_id()
-
+        next_maintenance = 0.0
         while True:
-            job_id = claim_job(identity)
-            if job_id is None:
+            claim = None
+            try:
+                close_old_connections()
+                if time.monotonic() >= next_maintenance:
+                    recover_expired_leases()
+                    ensure_retention_job()
+                    next_maintenance = time.monotonic() + 15
+                claim = claim_job(identity, with_token=True)
+                if claim is not None:
+                    job_id, token = claim
+                    try:
+                        process_job(job_id, claim_token=token)
+                    except Exception as exc:
+                        if isinstance(exc, DatabaseError):
+                            connections.close_all()
+                        fail_job(job_id, exc, claim_token=token)
+                        self.stderr.write(f"outbox job {job_id} failed: {type(exc).__name__}")
                 if once:
                     return
-                time.sleep(settings.outbox_poll_seconds)
-                continue
-            try:
-                process_job(job_id)
-                finish_job(job_id)
-            except Exception as exc:
-                fail_job(job_id, exc)
-                self.stderr.write(self.style.ERROR(f"outbox job {job_id} failed: {exc}"))
-            if once:
-                return
+            except DatabaseError as exc:
+                connections.close_all()
+                next_maintenance = 0.0
+                self.stderr.write(f"outbox database unavailable: {type(exc).__name__}")
+            time.sleep(settings.outbox_poll_seconds)

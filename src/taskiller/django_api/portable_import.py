@@ -14,6 +14,7 @@ from taskiller.django_api.errors import TaskillerAPIError
 from taskiller.django_api.idempotency import claim_idempotency, complete_idempotency
 from taskiller.django_api.runtime import taskiller_settings
 from taskiller.django_api.work_service import DjangoWorkService
+from taskiller.django_domain.models import TaskillerUser
 from taskiller.work.schemas import (
     CreateWorkItemRequest,
     CreateWorkTypeRequest,
@@ -104,6 +105,7 @@ def import_portable_document(owner_id: UUID, raw: Any, key: str) -> dict[str, An
     service = DjangoWorkService(owner_id)
     payload = document.model_dump(mode="json", by_alias=True)
     with transaction.atomic():
+        TaskillerUser.objects.select_for_update().get(id=owner_id)
         replay = claim_idempotency(
             owner_id=owner_id,
             scope="portable:import:v1",

@@ -93,6 +93,15 @@ class Settings(BaseSettings):
     auth_register_window_seconds: int = Field(default=3600, ge=60, le=86400)
     auth_password_reset_limit: int = Field(default=5, ge=1, le=50)
     auth_password_reset_window_seconds: int = Field(default=900, ge=60, le=86400)
+    auth_register_ip_limit: int = Field(default=20, ge=1, le=1000)
+    auth_register_ip_window_seconds: int = Field(default=3600, ge=60, le=86400)
+    auth_confirm_limit: int = Field(default=20, ge=1, le=1000)
+    auth_confirm_window_seconds: int = Field(default=900, ge=60, le=86400)
+    auth_email_verification_limit: int = Field(default=5, ge=1, le=100)
+    auth_email_verification_window_seconds: int = Field(default=3600, ge=60, le=86400)
+    auth_email_recipient_limit: int = Field(default=5, ge=1, le=100)
+    auth_email_recipient_window_seconds: int = Field(default=3600, ge=60, le=86400)
+    auth_email_cooldown_seconds: int = Field(default=60, ge=1, le=86400)
     rate_limit_test_mode: bool = False
 
     refresh_cookie_domain: str | None = None

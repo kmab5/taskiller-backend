@@ -69,6 +69,19 @@ Do not create new Alembic migrations.
 make check
 ```
 
+PostgreSQL integration tests require an explicit disposable local test database.
+In PowerShell, set both URLs to the same database before running pytest:
+
+```powershell
+$env:TASKILLER_ENV = 'test'
+$env:TASKILLER_DATABASE_URL = 'postgresql://taskiller:taskiller@localhost:5432/taskiller_test'
+$env:TASKILLER_TEST_DATABASE_URL = $env:TASKILLER_DATABASE_URL
+uv run pytest
+```
+
+CI also runs the auth, work, focus, execution, and privacy/worker smoke scripts.
+See `docs/PRODUCTION.md` for the no-cost Render setup and five-minute uptime checks.
+
 For the full client/server integration test, also run the web repository's:
 
 ```bash

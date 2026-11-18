@@ -5,6 +5,7 @@ from typing import Any
 PROBLEM_CODES = frozenset(
     {
         "auth_session_not_found",
+        "auth_origin_forbidden",
         "data_export_not_found",
         "email_already_registered",
         "email_delivery_unavailable",

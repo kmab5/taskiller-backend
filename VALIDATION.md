@@ -1,76 +1,48 @@
-# Backend v1 / Round 8 Validation
+# Django Backend Validation
 
-Validated on 2026-09-28 from the GitHub Round-7 source tree.
+Validated locally on 2026-11-18 using Python 3.14.6 and disposable PostgreSQL 18. This supersedes the former FastAPI/Alembic validation record. See `docs/audits/2026-11-18-backend-hardening.md` for the complete remediation map.
 
-## Source provenance
+## Results
 
-Canonical repository: `kmab5/taskiller-backend`.
+- Full pytest suite: **150 passed** with integration tests enabled.
+- Statement coverage: **56.42%**, up from the audit baseline of 40.87%. Smoke scripts are measured separately, not included in that figure.
+- Ruff lint and format: pass; 122 Python files formatted.
+- Pyright: pass, covering only the configured framework-neutral subset.
+- Django system check and migration drift: pass.
+- Fresh database startup migrations: pass, including migrations 0003–0005 and transaction-scoped startup locking.
+- Actual PostgreSQL constraints/indexes/ownership/history trigger audit: pass.
+- Auth, Work, Focus, Execution, Analytics/privacy/worker, and production-shaped smoke scripts: pass.
+- Release/cutover contract: pass, 54 API operations and 42 canonical paths.
+- Phase 10 legacy-import audit and Python compilation: pass.
+- Frozen lock consistency and hashed runtime dependency audit: pass; no known vulnerabilities reported.
+- collectstatic: pass, 154 files copied and 444 post-processed.
 
-Round 8 began from GitHub `main` commit:
+The native production launcher was also exercised over local HTTP: readiness 200, trusted Vercel-origin preflight 204, untrusted-origin login 403, and 30 concurrent health requests with zero failures. Deliberately stopping its API child caused supervisor exit and worker cleanup. PostgreSQL regression tests cover complete account deletion, failed/expired claim recovery, stale acknowledgements, transactional rollback, repeatable-read snapshots, concurrent sibling reorder, and durable email delivery through a stubbed provider.
 
-```text
-751cd9108a94c7edd516a3c659e3469abc4cb64e
-feat/cg: round-7, privacy and operations
+## Reproduction
+
+Use an explicitly disposable local database. In PowerShell:
+
+```powershell
+$env:PYTHONPATH = 'src'
+$env:TASKILLER_ENV = 'test'
+$env:TASKILLER_DATABASE_URL = 'postgresql://taskiller:taskiller@localhost:5432/taskiller_test'
+$env:TASKILLER_TEST_DATABASE_URL = $env:TASKILLER_DATABASE_URL
+$env:TASKILLER_EMAIL_DELIVERY_MODE = 'safe_log'
+uv sync --dev --frozen
+uv run python scripts/django_cutover_migrate.py
+uv run pytest --cov=taskiller --cov-report=term-missing
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run python manage.py check
+uv run python manage.py makemigrations --check --dry-run
+uv run python scripts/django_phase9_baseline_audit.py
+uv run python scripts/release_check.py
 ```
 
-Its Git tree was `385a5727d8b6dfa7c541979509ed9571f53c0081`. Before Round-8 edits, the local working tree used for implementation produced the same tree SHA, so the implementation baseline was byte-for-byte the current upstream contents.
+CI runs the domain smoke scripts and container checks as well. Integration-marked tests skip when no explicit test URL is supplied and refuse a nonlocal or mismatched database configuration.
 
-## Passed locally
+## Limits
 
-- full `pytest -q`: **68 passed, 31 skipped**
-  - all 31 skips are tests requiring `TASKILLER_TEST_DATABASE_URL`
-  - the skipped set includes the new v1 cross-domain PostgreSQL release smoke test
-- `python -m compileall -q src tests alembic scripts`: passed
-- SQLAlchemy mapper configuration through the complete application: passed, **20 mapped tables**
-- generated OpenAPI: **3.1.0**, API version **1.0.0**, **41 paths / 56 operations**
-- `scripts/release_check.py`: passed
-  - unique/non-missing operation IDs
-  - protected-vs-public operation audit
-  - complete literal `ApiError`/problem-code catalog
-  - committed/generated OpenAPI equality
-  - readiness/Alembic-head consistency
-- Alembic offline `upgrade head --sql`: passed through `20260928_0006`
-- Alembic offline full downgrade `20260928_0006:base --sql`: passed
-- source/test/script/migration 100-character line-length scan: passed
-- AST unused-import sanity scan: passed
-- `git diff --check`: passed
-
-## Round 8 release coverage
-
-Unit coverage includes deployed-configuration rejection, production SMTP requirements, SMTP sender selection, request-ID propagation, security headers/no-store behavior, sanitized unexpected-error responses, OpenAPI Problem/catalog construction, and Koyeb forwarded-client-address interpretation.
-
-The new PostgreSQL release smoke test crosses the public v1 product path in one scenario:
-
-1. registration;
-2. Work Type lookup;
-3. Project → Sprint → Chore creation;
-4. Focus recommendation and selected Focus Plan creation;
-5. Execution Session start and completion;
-6. analytics verification;
-7. data-export request;
-8. outbox export processing;
-9. signed export download and secret-exclusion verification.
-
-CI additionally performs a real PostgreSQL migration upgrade → downgrade-to-base → upgrade round trip before the complete integration suite.
-
-## Production safeguards verified structurally
-
-- startup migrations use a PostgreSQL session advisory lock;
-- readiness verifies both database connectivity and exact Alembic revision;
-- the API and outbox worker can share the same image while running as separate processes;
-- an embedded worker remains available only as a one-service preview/development topology;
-- production configuration rejects development secrets, wildcard hosts/CORS, local database URLs, and non-SMTP authentication email delivery;
-- generated v1 OpenAPI documents the canonical Problem response and complete stable error-code set.
-
-## Environment limitations
-
-This artifact runtime uses Python 3.13 while the repository targets Python 3.14. PostgreSQL, Ruff, Pyright, and Docker are not installed in this runtime, and direct package/network installation is unavailable.
-
-Therefore the following are **not claimed as locally executed**:
-
-- the 31 PostgreSQL integration tests;
-- Ruff lint and Ruff format check;
-- strict Pyright;
-- OCI/Docker image build and runtime health check.
-
-The repository CI remains authoritative for those checks. `.github/workflows/ci.yml` is configured for Python 3.14, Ruff, strict Pyright, PostgreSQL 18, migration round-trip, complete tests, release-contract verification, committed OpenAPI verification, and container build/import validation.
+Docker's client is installed but its engine is stopped; a local image build/runtime is not claimed. The native launcher and static collection checks do not substitute for container verification. No hosted database, Render account configuration, real Mailjet delivery, Vercel frontend/browser tests, historical FastAPI adoption, or backup restore was exercised. The existing five-minute external uptime monitor remains owner-managed. No paid service was added.

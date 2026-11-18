@@ -4214,6 +4214,16 @@
               }
             },
             "description": "Taskiller problem response"
+          },
+          "403": {
+            "description": "Untrusted browser origin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "summary": "Login",
@@ -4238,6 +4248,16 @@
               }
             },
             "description": "Taskiller problem response"
+          },
+          "403": {
+            "description": "Untrusted browser origin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4267,6 +4287,16 @@
               }
             },
             "description": "Taskiller problem response"
+          },
+          "403": {
+            "description": "Untrusted browser origin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4432,6 +4462,16 @@
               }
             },
             "description": "Taskiller problem response"
+          },
+          "403": {
+            "description": "Untrusted browser origin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "summary": "Refresh",
@@ -4509,6 +4549,16 @@
               }
             },
             "description": "Taskiller problem response"
+          },
+          "403": {
+            "description": "Untrusted browser origin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "summary": "Register",
@@ -6208,7 +6258,20 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            },
+            "description": "Unique key for safe retries of this import."
+          }
+        ]
       }
     },
     "/api/v1/projects/{projectId}/next-action": {
@@ -7271,6 +7334,7 @@
   },
   "x-taskiller-api-prefix": "/api/v1",
   "x-taskiller-problem-codes": [
+    "auth_origin_forbidden",
     "auth_session_not_found",
     "data_export_not_found",
     "email_already_registered",

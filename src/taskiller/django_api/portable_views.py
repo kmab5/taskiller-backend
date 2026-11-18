@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -19,6 +19,14 @@ class PortableImportView(APIView):
     @extend_schema(
         operation_id="importPortableWork",
         tags=["Work"],
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                location=OpenApiParameter.HEADER,
+                required=True,
+                type={"type": "string", "minLength": 8, "maxLength": 200},
+            ),
+        ],
         request=OpenApiTypes.OBJECT,
         responses={201: OpenApiTypes.OBJECT},
     )

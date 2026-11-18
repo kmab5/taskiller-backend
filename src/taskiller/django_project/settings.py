@@ -6,10 +6,12 @@ from pathlib import Path
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 from taskiller import __version__
 
 BASE_DIR = Path(__file__).resolve().parents[3]
+load_dotenv(BASE_DIR / ".env", override=False)
 TASKILLER_ENV = os.getenv("TASKILLER_ENV", "local").casefold()
 
 
@@ -47,7 +49,8 @@ def _database_config() -> dict[str, object]:
         "PASSWORD": unquote(parsed.password or ""),
         "HOST": parsed.hostname,
         "PORT": str(parsed.port or 5432),
-        "CONN_MAX_AGE": 60,
+        # ASGI threads must not retain one connection each; Neon pools upstream.
+        "CONN_MAX_AGE": 0,
         "CONN_HEALTH_CHECKS": True,
         "OPTIONS": options,
     }
@@ -125,10 +128,7 @@ ASGI_APPLICATION = "taskiller.django_project.asgi.application"
 
 DATABASES = {"default": _database_config()}
 
-# Phase 2: existing Taskiller tables are still owned by Alembic. This router is
-# a second safety layer in addition to every domain model using managed=False.
-# The bridge app deliberately has no Django migration module yet. Its schema
-# baseline is the checked model/introspection manifest, not DDL ownership.
+# Django migrations own both the domain schema and built-in admin/auth tables.
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": ("django.contrib.auth.password_validation.UserAttributeSimilarityValidator")},
     {
@@ -183,10 +183,25 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Taskiller API",
-    "DESCRIPTION": (
-        "Parallel Django/DRF migration foundation. FastAPI remains canonical "
-        "until the API phases preserve the existing v1 contract."
-    ),
+    "DESCRIPTION": "Taskiller's Django REST API. The client contract is /openapi.json.",
     "VERSION": __version__,
     "SERVE_INCLUDE_SCHEMA": False,
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"json": {"()": "taskiller.core.logging.JsonFormatter"}},
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "root": {"handlers": ["console"], "level": os.getenv("TASKILLER_LOG_LEVEL", "INFO")},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.server": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
 }

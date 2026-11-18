@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from asgiref.sync import async_to_sync
 from django.db import IntegrityError, transaction
 
 from taskiller.auth.security import (
     create_access_token,
+    derive_auth_email_token,
     generate_opaque_token,
     hash_opaque_token,
     normalize_email,
@@ -18,10 +18,11 @@ from taskiller.auth.security import (
 )
 from taskiller.core.time import utc_now
 from taskiller.django_api.errors import TaskillerAPIError
-from taskiller.django_api.runtime import auth_email_sender, taskiller_settings
+from taskiller.django_api.runtime import taskiller_settings
 from taskiller.django_domain.models import (
     AuthSession,
     EmailVerificationToken,
+    OutboxJob,
     PasswordResetToken,
     RefreshToken,
     TaskillerUser,
@@ -247,37 +248,14 @@ class DjangoAuthService:
             if locked.email_verified_at is not None or not locked.is_active:
                 return
             now = utc_now()
-            EmailVerificationToken.objects.filter(
+            if EmailVerificationToken.objects.filter(
                 user_id=locked.id,
-                consumed_at__isnull=True,
-            ).update(consumed_at=now)
-            plain = generate_opaque_token()
-            EmailVerificationToken.objects.create(
-                id=uuid4(),
-                user_id=locked.id,
-                token_hash=hash_opaque_token(plain, self.settings),
-                created_at=now,
-                expires_at=now + timedelta(minutes=self.settings.email_verification_ttl_minutes),
-                consumed_at=None,
-            )
-            email = locked.email
-
-        try:
-            async_to_sync(auth_email_sender().send_email_verification)(email, plain)
-        except Exception as exc:
-            logger.exception(
-                "email_verification_delivery_failed",
-                extra={"user_id": str(user.id)},
-            )
-            raise TaskillerAPIError(
-                503,
-                "email_delivery_unavailable",
-                "Email delivery unavailable",
-                "Taskiller could not reach the configured email provider. Try again later.",
-            ) from exc
+                created_at__gt=now - timedelta(seconds=self.settings.auth_email_cooldown_seconds),
+            ).exists():
+                return
+            self._queue_auth_email(locked, "email_verification", now)
 
     def confirm_email_verification(self, token: str) -> None:
-        now = utc_now()
         token_hash = hash_opaque_token(token, self.settings)
         first = EmailVerificationToken.objects.filter(token_hash=token_hash).first()
         if first is None:
@@ -286,6 +264,7 @@ class DjangoAuthService:
         with transaction.atomic():
             user = TaskillerUser.objects.select_for_update().filter(id=first.user_id).first()
             row = EmailVerificationToken.objects.select_for_update().filter(id=first.id).first()
+            now = utc_now()
             if (
                 user is None
                 or row is None
@@ -294,8 +273,10 @@ class DjangoAuthService:
                 or not user.is_active
             ):
                 raise self._invalid_one_time_token("email_verification_token_invalid")
-            row.consumed_at = now
-            row.save(update_fields=["consumed_at"])
+            EmailVerificationToken.objects.filter(
+                user_id=user.id,
+                consumed_at__isnull=True,
+            ).update(consumed_at=now)
             if user.email_verified_at is None:
                 user.email_verified_at = now
                 user.updated_at = now
@@ -316,42 +297,51 @@ class DjangoAuthService:
             if user is None or not user.is_active:
                 return
             now = utc_now()
-            PasswordResetToken.objects.filter(
+            if PasswordResetToken.objects.filter(
                 user_id=user.id,
-                consumed_at__isnull=True,
-            ).update(consumed_at=now)
-            plain = generate_opaque_token()
-            PasswordResetToken.objects.create(
-                id=uuid4(),
-                user_id=user.id,
-                token_hash=hash_opaque_token(plain, self.settings),
-                created_at=now,
-                expires_at=now + timedelta(minutes=self.settings.password_reset_ttl_minutes),
-                consumed_at=None,
-            )
-            recipient = user.email
-            user_id = user.id
+                created_at__gt=now - timedelta(seconds=self.settings.auth_email_cooldown_seconds),
+            ).exists():
+                return
+            self._queue_auth_email(user, "password_reset", now)
 
-        try:
-            async_to_sync(auth_email_sender().send_password_reset)(recipient, plain)
-        except Exception as exc:
-            logger.exception(
-                "password_reset_delivery_failed",
-                extra={"user_id": str(user_id)},
-            )
-            raise TaskillerAPIError(
-                503,
-                "email_delivery_unavailable",
-                "Email delivery unavailable",
-                "Taskiller could not reach the configured email provider. Try again later.",
-            ) from exc
+    def _queue_auth_email(self, user: TaskillerUser, kind: str, now: datetime) -> None:
+        token_id = uuid4()
+        verification = kind == "email_verification"
+        model = EmailVerificationToken if verification else PasswordResetToken
+        ttl = (
+            self.settings.email_verification_ttl_minutes
+            if verification
+            else self.settings.password_reset_ttl_minutes
+        )
+        plain = derive_auth_email_token(token_id, kind, self.settings)
+        model.objects.create(
+            id=token_id,
+            user_id=user.id,
+            token_hash=hash_opaque_token(plain, self.settings),
+            created_at=now,
+            expires_at=now + timedelta(minutes=ttl),
+            consumed_at=None,
+        )
+        OutboxJob.objects.create(
+            id=uuid4(),
+            job_type="auth_email",
+            payload_json={"tokenId": str(token_id), "userId": str(user.id), "kind": kind},
+            status="queued",
+            available_at=now,
+            attempts=0,
+            max_attempts=self.settings.outbox_max_attempts,
+            created_at=now,
+            updated_at=now,
+        )
 
     def confirm_password_reset(self, token: str, new_password: str) -> None:
-        new_hash = password_hasher.hash(new_password)
         token_hash = hash_opaque_token(token, self.settings)
         first = PasswordResetToken.objects.filter(token_hash=token_hash).first()
-        if first is None:
+        if first is None or first.consumed_at is not None or first.expires_at <= utc_now():
             raise self._invalid_one_time_token("password_reset_token_invalid")
+        if not TaskillerUser.objects.filter(id=first.user_id, is_active=True).exists():
+            raise self._invalid_one_time_token("password_reset_token_invalid")
+        new_hash = password_hasher.hash(new_password)
 
         with transaction.atomic():
             user = TaskillerUser.objects.select_for_update().filter(id=first.user_id).first()

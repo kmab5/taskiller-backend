@@ -1,78 +1,40 @@
-# Production Deployment — Django Cutover
+# Production Deployment
 
-Taskiller production is now:
+## No-cost topology
 
-```text
-Vercel / SvelteKit
-       |
-       | HTTPS /api/v1
-       v
-Render Free / Django ASGI
-       | \
-       |  \ HTTPS
-       |   -> Mailjet
-       |
-       +---- Neon PostgreSQL
-       |
-       +---- embedded Django outbox worker
-```
+The SvelteKit frontend runs on Vercel; Django ASGI and its embedded PostgreSQL outbox worker share one Render Free web service. Neon stores application data and temporary exports. Authentication mail uses Mailjet's HTTPS API. No Redis, paid worker, or additional hosted component is required.
 
-## One-time schema adoption
+An externally configured uptime monitor sends a normal HTTP request every five minutes. Keep that monitor enabled and alert on failures. `/health/live` is a cheap process check; `/health/ready` also checks PostgreSQL and migrations. Render's deployment health check is `/health/ready`. The external monitor is not managed by this repository.
 
-Before the first Django production deployment:
+The checks address normal idle sleep, but restarts, exhausted provider allowances, monitor outages, and provider incidents can interrupt processing. Due jobs resume after recovery; no-cost hosting does not provide an exact execution-time guarantee. See [Render's Free documentation](https://render.com/docs/free).
 
-```bash
-uv lock
-uv sync --dev
-python apply_django_phase8.py
-PYTHONPATH=src uv run python scripts/prepare_django_baseline.py
-```
+## Runtime and secrets
 
-Review and commit the generated `django_domain/migrations/0001_...py`.
+The Docker entrypoint is `python scripts/run_django_production.py`. It serializes and applies committed Django migrations, starts the embedded worker when enabled, starts Uvicorn, and terminates both children if either exits. The worker retries database outages and periodically recovers abandoned jobs.
 
-The live Neon database must already be at legacy Alembic head `20260930_0007`.
+Keep these in Render environment settings:
 
-On the first Django startup, `scripts/django_cutover_migrate.py` runs
-`migrate --fake-initial`: Django creates its built-in admin/auth/session tables and records the
-existing Taskiller domain schema as its initial migration without recreating those tables.
+- `TASKILLER_ENV=production`, `TASKILLER_EMBEDDED_WORKER_ENABLED=true`.
+- Neon `TASKILLER_DATABASE_URL`, including required TLS options. Django disables per-thread persistent ASGI connections; Neon's pooler handles upstream pooling.
+- Independent strong `TASKILLER_DJANGO_SECRET_KEY`, `TASKILLER_JWT_SECRET`, and `TASKILLER_TOKEN_HASH_SECRET`.
+- `TASKILLER_EMAIL_DELIVERY_MODE=mailjet`, Mailjet key/secret/verified sender, and `TASKILLER_WEB_APP_URL` pointing at the frontend.
+- JSON arrays for `TASKILLER_ALLOWED_HOSTS` and `TASKILLER_CORS_ORIGINS`; use the exact intended hosts and browser origins. Explicitly add any preview origin that needs login; do not use wildcard origins.
+- For unrelated Render/Vercel domains, `TASKILLER_REFRESH_COOKIE_SECURE=true` and `TASKILLER_REFRESH_COOKIE_SAMESITE=none`. Browser third-party-cookie restrictions still require browser verification.
 
-After this adoption, all new Taskiller schema changes must be Django migrations.
+Trust forwarded addresses only behind the intended proxy. Keep credentials out of `.env.example`, Git, and logs. Rotate the token-HMAC secret deliberately: pending email jobs reconstruct tokens from it, so rotation invalidates them along with other opaque credentials.
 
-## Render
+## Database changes
 
-Docker starts:
+Use committed Django migrations only. New databases include uniqueness constraints, ownership/hierarchy guards, append-only history, and queue indexes. Startup uses a transaction-scoped PostgreSQL advisory lock, compatible with transaction pooling. Current migrations are transactional; review this runner before introducing nontransactional DDL.
 
-```text
-python scripts/run_django_production.py
-```
+The FastAPI-to-Django transition happened before real users existed. Legacy adoption helpers remain historical compatibility paths. Do not regenerate the baseline or run an archived FastAPI entrypoint for normal deployment. New constraints refuse conflicting development records instead of deleting data silently. Resolve startup constraint failures deliberately.
 
-This:
+## API and release checks
 
-1. applies committed Django migrations;
-2. starts the Django outbox worker when `TASKILLER_EMBEDDED_WORKER_ENABLED=true`;
-3. starts Django ASGI with Uvicorn.
+`/openapi.json` serves `openapi/current.json`. Review contract changes and coordinate frontend snapshot/type regeneration when needed. Authentication mail responses indicate queue acceptance, not confirmed inbox delivery.
 
-Required new secret:
-
-```text
-TASKILLER_DJANGO_SECRET_KEY=<strong independent secret>
-```
-
-Existing JWT, token-HMAC, Mailjet, database, CORS and refresh-cookie environment variables remain.
-
-## OpenAPI
-
-`/openapi.json` serves the fully typed committed `openapi/current.json`.
-
-The Django runtime is audited against that contract in CI. This intentionally avoids replacing
-the client contract with the less-detailed transitional drf-spectacular schemas.
+CI validates fresh migrations, actual database indexes/triggers, API contracts, domain/worker regressions, dependency advisories, and the production image. Follow `docs/RUNBOOK.md` for releases and incidents. Local Compose now uses PostgreSQL 18's `/var/lib/postgresql` volume layout; back up and intentionally move any existing local data before recreating a container.
 
 ## Rollback
 
-Until Django has been stable in production, the previous FastAPI entrypoint remains in the codebase:
-
-```bash
-PYTHONPATH=src uv run uvicorn taskiller.main:app --host 0.0.0.0 --port 8000
-```
-
-Do not create new Alembic migrations after Django adoption.
+Redeploy a compatible earlier Django commit for a code rollback. Prefer a forward fix after schema changes. Do not run Alembic downgrades or restore FastAPI: the archive is not installed. Review backups and dependent data before an explicitly planned Django migration rollback.

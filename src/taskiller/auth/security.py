@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import secrets
@@ -124,3 +125,12 @@ def decode_access_token(token: str, settings: Settings) -> AccessClaims | None:
         issued_at=issued_at,
         expires_at=expires_at,
     )
+
+
+def derive_auth_email_token(token_id: UUID, kind: str, settings: Settings) -> str:
+    """Reconstruct a delivery credential without storing it in the outbox."""
+    if kind not in {"email_verification", "password_reset"}:
+        raise ValueError("Unsupported auth email kind")
+    message = b"taskiller:auth-email:v1\x00" + kind.encode("ascii") + b"\x00" + token_id.bytes
+    digest = hmac.new(settings.token_hash_secret.encode(), message, hashlib.sha384).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")

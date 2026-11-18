@@ -1,4 +1,4 @@
-.PHONY: install dev lint format format-check typecheck compile test check migrate release-check phase10-audit worker
+.PHONY: install dev lint format format-check typecheck compile test check migrate release-check phase10-audit worker smoke
 
 install:
 	uv sync --dev
@@ -38,4 +38,11 @@ phase10-audit:
 	PYTHONPATH=src uv run python scripts/django_phase9_baseline_audit.py
 	PYTHONPATH=src uv run python scripts/django_phase9_production_smoke.py
 
-check: compile lint format-check typecheck test release-check phase10-audit
+smoke:
+	PYTHONPATH=src uv run python scripts/django_phase3_auth_smoke.py
+	PYTHONPATH=src uv run python scripts/django_phase4_work_smoke.py
+	PYTHONPATH=src uv run python scripts/django_phase5_focus_smoke.py
+	PYTHONPATH=src uv run python scripts/django_phase6_execution_smoke.py
+	PYTHONPATH=src uv run python scripts/django_phase7_smoke.py
+
+check: compile lint format-check typecheck test release-check phase10-audit smoke

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
 from uuid import uuid4
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taskiller.django_project.settings")
@@ -41,7 +42,7 @@ def main() -> None:
 
     end = datetime.now(UTC) + timedelta(minutes=1)
     start = end - timedelta(days=1)
-    query = f"?from={start.isoformat()}&to={end.isoformat()}"
+    query = "?" + urlencode({"from": start.isoformat(), "to": end.isoformat()})
 
     for path in (
         "/api/v1/analytics/summary",
@@ -70,9 +71,13 @@ def main() -> None:
         raise SystemExit("export request failed")
 
     export_id = export.json()["requestId"]
-    call_command("taskiller_worker", once=True)
-
     row = DataExportRequest.objects.get(id=export_id)
+    due = OutboxJob.objects.filter(status="queued", available_at__lte=datetime.now(UTC)).count()
+    for _ in range(due + 1):
+        call_command("taskiller_worker", once=True)
+        row.refresh_from_db()
+        if row.status in {"ready", "failed"}:
+            break
     if row.status != "ready" or not row.archive_bytes:
         raise SystemExit(f"Django worker failed export: {row.status}")
 

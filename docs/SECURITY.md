@@ -25,6 +25,8 @@
 - `Idempotency-Key` guards retryable creation/event mutations.
 - PostgreSQL constraints/triggers independently enforce critical ownership/hierarchy/session invariants.
 - Sensitive public auth endpoints use PostgreSQL-backed rate limiting.
+- Registration has an independent IP budget; confirmations are throttled before hashing, and mail delivery has user/recipient budgets and a cooldown.
+- Browser cookie-auth operations reject untrusted origins. Requests without Origin remain available to native clients unless browser Fetch Metadata identifies a cross-site request.
 
 ## Proxy/IP trust
 
@@ -32,7 +34,7 @@ Production runs behind Render. `TASKILLER_TRUST_FORWARDED_FOR=true` allows the r
 
 ## Authentication email
 
-Production requires a real delivery transport. The recommended zero-cost Render setup uses Mailjet Send API v3.1 over HTTPS. API credentials remain server-side only and one-time authentication tokens are never logged in production. Provider errors are normalized to `email_delivery_unavailable`.
+Production requires a real delivery transport. The no-cost Render setup uses Mailjet Send API v3.1 over HTTPS. Verification/reset requests enqueue durable delivery; 202 means queued or intentionally suppressed, not delivered. Jobs store token/user/purpose references only, and the worker reconstructs credentials with the token-HMAC secret. Provider failures retry without invalidating previous usable links; malformed Mailjet acceptance responses fail closed. One-time tokens are never logged in production.
 
 SMTP remains available as an alternative transport for environments where outbound SMTP is allowed.
 

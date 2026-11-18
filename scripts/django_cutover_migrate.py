@@ -10,7 +10,7 @@ import django
 django.setup()
 
 from django.core.management import call_command
-from django.db import connection
+from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 
 LEGACY_ALEMBIC_HEAD = "20260930_0007"
@@ -43,7 +43,7 @@ def _verify_legacy_schema() -> None:
         )
 
 
-def main() -> None:
+def _migrate() -> None:
     if not _domain_adopted() and _existing_legacy_schema():
         _verify_legacy_schema()
         call_command(
@@ -67,6 +67,16 @@ def main() -> None:
         )
         raise RuntimeError(f"Django migrations remain pending: {names}")
     print("Django migrations/adoption OK")
+
+
+def main() -> None:
+    # A transaction-scoped lock also works through Neon's transaction pooler.
+    # Immediate checks prevent seed inserts leaving deferred FK events before DDL.
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(hashtext('taskiller-migrations'))")
+            cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        _migrate()
 
 
 if __name__ == "__main__":

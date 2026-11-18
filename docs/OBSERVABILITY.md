@@ -1,48 +1,11 @@
 # Observability
 
-Taskiller v1 deliberately uses platform-native metrics plus structured application logs instead of adding a metrics backend before one is needed.
+Use Render logs and existing provider metrics; no additional paid monitoring service is required. Keep external five-minute uptime checks enabled and alert on failed probes.
 
-## Request correlation
+Every response has a validated or generated `X-Request-ID`; Problem responses include the same `requestId`. Structured HTTP completion logs contain path, status, and duration. They omit query strings, headers, cookies, and client IP. Django request objects are excluded from JSON logs, and raw Uvicorn access logs are disabled to avoid exposing signed export URLs. Worker failure messages and persisted errors contain exception class names only.
 
-Every HTTP response includes:
+`/health/live` confirms the API process; `/health/ready` checks database access and pending migrations. `/health/version` provides package/release identity from Render or `TASKILLER_RELEASE_*`. Supervision exits the service when either child exits; a stalled live worker still needs queue-age investigation.
 
-```text
-X-Request-ID: <opaque id>
-```
+Useful checks include repeated readiness failures, 5xx responses, request durations, Render restarts/memory, Neon connections, dead jobs, oldest due job, and overdue deletion jobs. Current health responses do not expose queue contents or assert mail-provider delivery.
 
-Clients may provide a safe 8–128 character `X-Request-ID`; otherwise Taskiller generates one. Problem responses also include the same value as `requestId`.
-
-## Structured logs
-
-HTTP completion logs are JSON and include:
-
-- `request_id`
-- HTTP method
-- URL path (never query strings/tokens)
-- status code
-- duration in milliseconds
-- normalized client IP
-
-Unhandled exceptions are logged with request ID and path; the client receives only a sanitized internal-error problem.
-
-Security events are a separate append-only PostgreSQL audit trail. They store HMAC-pseudonymized subjects, not raw IP addresses.
-
-## Release identity
-
-`GET /health/version` returns package version plus Git SHA/branch/repository when supplied by Koyeb or `TASKILLER_RELEASE_*` environment variables.
-
-## Alerting baseline
-
-For a production service, alert on:
-
-- sustained `/health/ready` failure;
-- HTTP 5xx rate;
-- p95/p99 request latency;
-- Koyeb instance restarts or memory saturation;
-- Neon connection/compute saturation;
-- `outbox_jobs.status='dead'` count > 0;
-- old `running` jobs whose leases repeatedly expire;
-- account deletion jobs reaching `dead`;
-- repeated rate-limit spikes on authentication scopes.
-
-Koyeb exposes service logs and resource/request metrics. If long-term log retention is required, use Koyeb's log exporter or another external collector; the application emits machine-readable JSON already.
+Security events are a separate pseudonymized PostgreSQL audit history, immutable except for controlled retention. Do not add request bodies, authentication headers, reset tokens, or signed download URLs to logs during incident investigation.

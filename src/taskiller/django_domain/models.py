@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import models
+from django.db.models.functions import Lower
 
 DO_NOTHING = models.DO_NOTHING
 
@@ -46,6 +49,10 @@ class TaskillerUser(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "users"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(Lower("email"), name="tk_users_email_ci_unique"),
+            models.CheckConstraint(condition=models.Q(version__gte=1), name="tk_users_version"),
+        ]
         verbose_name = "Taskiller user"
         verbose_name_plural = "Taskiller users"
 
@@ -102,6 +109,9 @@ class AuthSession(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "auth_sessions"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["expires_at"], name="tk_auth_sessions_expiry")
+        ]
 
 
 class RefreshToken(ExistingTaskillerModel):
@@ -127,6 +137,12 @@ class RefreshToken(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "refresh_tokens"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(fields=["token_hash"], name="tk_refresh_hash")
+        ]
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["expires_at"], name="tk_refresh_expiry")
+        ]
 
 
 class EmailVerificationToken(ExistingTaskillerModel):
@@ -144,6 +160,9 @@ class EmailVerificationToken(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "email_verification_tokens"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(fields=["token_hash"], name="tk_verify_hash")
+        ]
 
 
 class PasswordResetToken(ExistingTaskillerModel):
@@ -161,6 +180,9 @@ class PasswordResetToken(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "password_reset_tokens"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(fields=["token_hash"], name="tk_reset_hash")
+        ]
 
 
 class IdempotencyRecord(ExistingTaskillerModel):
@@ -177,6 +199,9 @@ class IdempotencyRecord(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "idempotency_records"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["expires_at"], name="tk_idempotency_expiry")
+        ]
 
 
 class WorkType(ExistingTaskillerModel):
@@ -204,6 +229,26 @@ class WorkType(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "work_types"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(
+                Lower("slug"),
+                "owner",
+                condition=models.Q(owner__isnull=False),
+                name="tk_work_type_owner_slug",
+            ),
+            models.UniqueConstraint(
+                Lower("slug"),
+                condition=models.Q(owner__isnull=True),
+                name="tk_work_type_system_slug",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_system=True, owner__isnull=True)
+                    | models.Q(is_system=False, owner__isnull=False)
+                ),
+                name="tk_work_type_ownership",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.display_name
@@ -258,6 +303,45 @@ class WorkItem(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "work_items"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.CheckConstraint(
+                condition=models.Q(kind__in=["project", "sprint", "chore"]),
+                name="tk_work_kind",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=[
+                        "draft",
+                        "ready",
+                        "in_progress",
+                        "completed",
+                        "cancelled",
+                        "archived",
+                    ]
+                ),
+                name="tk_work_status",
+            ),
+            models.CheckConstraint(
+                condition=(~models.Q(kind="project") | models.Q(parent__isnull=True)),
+                name="tk_project_root",
+            ),
+            models.CheckConstraint(
+                condition=(~models.Q(kind="sprint") | models.Q(parent__isnull=False)),
+                name="tk_sprint_parent",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(parent=models.F("id")),
+                name="tk_work_not_self_parent",
+            ),
+            models.CheckConstraint(condition=models.Q(version__gte=1), name="tk_work_version"),
+        ]
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(
+                fields=["owner", "parent", "position"],
+                name="tk_work_siblings",
+                condition=models.Q(deleted_at__isnull=True),
+            )
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -353,6 +437,16 @@ class FocusPlanSegment(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "focus_plan_segments"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(
+                fields=["focus_plan", "segment_index"],
+                name="tk_plan_segment_index",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(segment_index__gte=0),
+                name="tk_segment_nonnegative",
+            ),
+        ]
 
 
 class ExecutionSession(ExistingTaskillerModel):
@@ -397,6 +491,18 @@ class ExecutionSession(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "execution_sessions"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(
+                fields=["owner"],
+                condition=models.Q(state__in=["running", "paused"]),
+                name="tk_one_open_session",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(state__in=["running", "paused", "completed", "abandoned"]),
+                name="tk_session_state",
+            ),
+            models.CheckConstraint(condition=models.Q(version__gte=1), name="tk_session_version"),
+        ]
 
 
 class SessionEvent(ExistingTaskillerModel):
@@ -425,6 +531,12 @@ class SessionEvent(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "session_events"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(
+                fields=["session", "idempotency_key"],
+                name="tk_session_event_key",
+            )
+        ]
 
 
 class SessionReview(ExistingTaskillerModel):
@@ -474,6 +586,9 @@ class DataExportRequest(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "data_export_requests"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["expires_at"], name="tk_export_expiry")
+        ]
 
 
 class AccountDeletionRequest(ExistingTaskillerModel):
@@ -508,6 +623,18 @@ class OutboxJob(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "outbox_jobs"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(
+                fields=["available_at", "created_at"],
+                condition=models.Q(status="queued"),
+                name="tk_outbox_due",
+            ),
+            models.Index(
+                fields=["lease_expires_at"],
+                condition=models.Q(status="running"),
+                name="tk_outbox_leases",
+            ),
+        ]
 
 
 class RateLimitBucket(ExistingTaskillerModel):
@@ -533,3 +660,6 @@ class SecurityEvent(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "security_events"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["created_at"], name="tk_security_retention")
+        ]

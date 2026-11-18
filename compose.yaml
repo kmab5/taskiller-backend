@@ -13,7 +13,7 @@ services:
       timeout: 3s
       retries: 20
     volumes:
-      - taskiller-postgres:/var/lib/postgresql/data
+      - taskiller-postgres:/var/lib/postgresql
 
 volumes:
   taskiller-postgres:

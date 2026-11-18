@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import logging
 import re
 import time
 from collections.abc import Callable
 from uuid import uuid4
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from taskiller.core.config import Environment, get_settings
+
+logger = logging.getLogger(__name__)
 
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{8,128}$")
 
@@ -40,6 +43,34 @@ class TaskillerRuntimeMiddleware:
             and allowed_origin
         ):
             response = HttpResponse(status=204)
+        elif (
+            request.method not in {"GET", "HEAD", "OPTIONS"}
+            and request.path.rstrip("/")
+            in {
+                f"{settings.api_prefix}/auth/{name}"
+                for name in ("login", "register", "refresh", "logout", "logout-all")
+            }
+            and (
+                (origin is not None and not allowed_origin)
+                or (
+                    origin is None
+                    and request.headers.get("sec-fetch-site", "").lower() == "cross-site"
+                )
+            )
+        ):
+            response = JsonResponse(
+                {
+                    "type": "/problems/auth_origin_forbidden",
+                    "code": "auth_origin_forbidden",
+                    "title": "Untrusted request origin",
+                    "status": 403,
+                    "instance": request.path,
+                    "requestId": request_id,
+                },
+                status=403,
+                content_type="application/problem+json",
+            )
+            response["Cache-Control"] = "no-store"
         else:
             response = self.get_response(request)
 
@@ -75,4 +106,12 @@ class TaskillerRuntimeMiddleware:
             response["Access-Control-Expose-Headers"] = "ETag, Location, Retry-After, X-Request-ID"
 
         request.taskiller_duration_ms = round((time.perf_counter() - started) * 1000, 2)
+        logger.info(
+            "http_request",
+            extra={
+                "path": request.path,
+                "status": response.status_code,
+                "duration_ms": request.taskiller_duration_ms,
+            },
+        )
         return response

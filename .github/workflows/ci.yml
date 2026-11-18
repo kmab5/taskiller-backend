@@ -31,7 +31,8 @@ jobs:
       TASKILLER_DATABASE_URL: postgresql+psycopg://taskiller:taskiller@localhost:5432/taskiller_test
       TASKILLER_TEST_DATABASE_URL: postgresql+psycopg://taskiller:taskiller@localhost:5432/taskiller_test
       TASKILLER_DJANGO_SECRET_KEY: ci-django-secret-ci-django-secret-ci
-      TASKILLER_EMAIL_DELIVERY_MODE: development_log
+      TASKILLER_EMAIL_DELIVERY_MODE: safe_log
+      PYTHONPATH: src
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,7 +45,12 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --dev --frozen
+
+      - name: Audit locked runtime dependencies
+        run: |
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt > /tmp/taskiller-runtime.txt
+          uvx --from pip-audit pip-audit --requirement /tmp/taskiller-runtime.txt --require-hashes --no-deps --disable-pip
 
       - name: Compile
         run: uv run python -m compileall -q src tests scripts manage.py
@@ -81,6 +87,14 @@ jobs:
 
       - name: Production-shaped smoke
         run: PYTHONPATH=src uv run python scripts/django_phase9_production_smoke.py
+
+      - name: Domain and worker smoke checks
+        run: |
+          uv run python scripts/django_phase3_auth_smoke.py
+          uv run python scripts/django_phase4_work_smoke.py
+          uv run python scripts/django_phase5_focus_smoke.py
+          uv run python scripts/django_phase6_execution_smoke.py
+          uv run python scripts/django_phase7_smoke.py
 
       - name: Tests
         run: uv run pytest --cov=taskiller --cov-report=term-missing --cov-report=xml

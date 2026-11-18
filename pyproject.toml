@@ -35,7 +35,7 @@ build-backend = "hatchling.build"
 packages = ["src/taskiller"]
 
 [tool.pytest.ini_options]
-addopts = "-ra --strict-config --strict-markers"
+addopts = "-ra --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["tests"]
 markers = [
   "integration: requires a PostgreSQL database",
