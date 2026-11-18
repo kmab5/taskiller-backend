@@ -31,6 +31,7 @@ try {
   assert.equal(data.operations.length, 57);
   assert.equal(Object.keys(data.schemas).length, 80);
   await page.screenshot({ path: path.join(output, 'desktop-home.png'), fullPage: true });
+  assert.equal(await page.locator('.atlas-lines g path').count(), 5, 'Connected task diagram');
   await page.locator('[data-hero="2"]').click();
   assert.match(await page.locator('#hero-insight').innerText(), /Focus Plan/);
 
@@ -97,11 +98,15 @@ try {
   let accessibility = [];
   try {
     const AxeBuilder = require('@axe-core/playwright').default;
-    for (const route of ['', 'api/createWorkItem', 'database/work_items', 'objects/WorkItemResponse', 'journey']) {
+    for (const route of ['', 'api/createWorkItem', 'database/work_items', 'objects/WorkItemResponse', 'journey', 'mechanics', 'glossary', 'reference/ARCHITECTURE.md']) {
       await visit(route);
       const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
       accessibility.push({ route, violations: result.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) })) });
     }
+    await visit('api/createWorkItem');
+    await page.getByRole('tab', { name: 'Request & response' }).click();
+    const requestAudit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    accessibility.push({ route: 'api/createWorkItem (request & response)', violations: requestAudit.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })) });
     assert.equal(accessibility.flatMap(item => item.violations).length, 0, JSON.stringify(accessibility, null, 2));
   } catch (error) {
     if (error.code !== 'MODULE_NOT_FOUND') throw error;
