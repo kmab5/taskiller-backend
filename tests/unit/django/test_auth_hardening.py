@@ -419,3 +419,28 @@ def test_requested_email_is_claimed_and_processed_by_worker(monkeypatch):
             AuthSession.objects.filter(user_id=user.id).delete()
             UserPreferences.objects.filter(user_id=user.id).delete()
             TaskillerUser.objects.filter(id=user.id).delete()
+
+
+@pytest.mark.parametrize("secure,samesite", [(False, "lax"), (True, "none")])
+def test_clear_refresh_cookie_expires_the_configured_cookie(monkeypatch, secure, samesite):
+    from rest_framework.response import Response
+
+    from taskiller.django_api import views
+
+    settings = Settings(
+        _env_file=None,
+        refresh_cookie_secure=secure,
+        refresh_cookie_samesite=samesite,
+        refresh_cookie_domain="example.test",
+    )
+    monkeypatch.setattr(views, "taskiller_settings", lambda: settings)
+    response = Response(status=204)
+    views._clear_refresh_cookie(response)
+    cookie = response.cookies[views.REFRESH_COOKIE_NAME]
+    assert cookie.value == ""
+    assert cookie["max-age"] == 0
+    assert cookie["path"] == f"{settings.api_prefix}/auth"
+    assert cookie["domain"] == "example.test"
+    assert cookie["samesite"] == samesite
+    assert bool(cookie["secure"]) == secure
+    assert cookie["httponly"]

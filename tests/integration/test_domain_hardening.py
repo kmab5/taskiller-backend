@@ -260,3 +260,45 @@ def test_concurrent_sibling_reorders_complete_without_deadlock():
             assert len(set(positions)) == 3
         finally:
             pool.submit(cleanup, user_id).result(timeout=15)
+
+
+@pytest.mark.parametrize("initial", ["draft", "ready"])
+def test_start_session_respects_database_work_state_guard(initial):
+    from django.db import connection
+
+    from taskiller.django_domain.models import SessionEvent
+
+    user = owner()
+    chore = item(user)
+    if initial == "ready":
+        WorkItem.objects.filter(id=chore.id).update(status="ready")
+        chore.refresh_from_db()
+    focus_plan_id = plan(user, chore)
+    # Reproduce the state guard retained on deployed databases. Fresh Django
+    # databases do not have this legacy trigger, so install it transactionally.
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            CREATE FUNCTION pg_temp.check_session_work_transition() RETURNS trigger AS $$
+            BEGIN
+                IF (OLD.status = 'draft' AND NEW.status NOT IN ('draft', 'ready'))
+                   OR (OLD.status = 'ready' AND NEW.status NOT IN ('ready', 'in_progress')) THEN
+                    RAISE EXCEPTION 'invalid work item state transition';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+            CREATE TRIGGER test_session_work_transition BEFORE UPDATE ON work_items
+            FOR EACH ROW EXECUTE FUNCTION pg_temp.check_session_work_transition();
+        """)
+    service = DjangoExecutionService(user.id)
+    payload = StartExecutionSessionRequest(work_item_id=chore.id, focus_plan_id=focus_plan_id)
+    key = str(uuid4())
+    result = service.start_session(payload, key)
+    chore.refresh_from_db()
+    assert chore.status == "in_progress"
+    assert chore.version == (3 if initial == "draft" else 2)
+    assert ExecutionSession.objects.get(id=result["id"]).state == "running"
+    assert SessionEvent.objects.filter(session_id=result["id"]).count() == 2
+    assert service.start_session(payload, key) == result
+    chore.refresh_from_db()
+    assert chore.version == (3 if initial == "draft" else 2)

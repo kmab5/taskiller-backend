@@ -161,3 +161,32 @@ def test_segment_validation_rejects_invalid_work(monkeypatch, invalid):
     filters = manager.select_for_update.return_value.filter.call_args.kwargs
     assert filters["owner_id"] == service.owner_id
     assert filters["deleted_at__isnull"]
+
+
+@pytest.mark.parametrize(
+    "initial,expected",
+    [("draft", ["ready", "in_progress"]), ("ready", ["in_progress"]), ("in_progress", [])],
+)
+def test_session_start_persists_each_work_state_transition(initial, expected):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    now = datetime.now(UTC)
+    persisted = initial
+    writes = []
+    row = SimpleNamespace(status=initial, version=1, updated_at=None)
+
+    def save():
+        nonlocal persisted
+        allowed = {"draft": {"ready"}, "ready": {"in_progress"}}
+        assert row.status in allowed.get(persisted, set()), "invalid work item state transition"
+        persisted = row.status
+        writes.append(row.status)
+
+    row.save = Mock(side_effect=save)
+    service = DjangoExecutionService.__new__(DjangoExecutionService)
+    service._move_work_item_to_in_progress(row, now)
+    assert writes == expected
+    assert row.version == 1 + len(expected)
+    if expected:
+        assert row.updated_at == now

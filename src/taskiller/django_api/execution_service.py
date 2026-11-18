@@ -835,18 +835,17 @@ class DjangoExecutionService:
         row: WorkItem,
         now: datetime,
     ) -> None:
-        changed = False
         if row.status == WorkItemStatus.DRAFT.value:
+            # Persist the intermediate state: deployed database guards validate
+            # each transition against the stored row, not in-memory assignments.
             row.status = WorkItemStatus.READY.value
             row.updated_at = now
             row.version += 1
-            changed = True
+            row.save()
         if row.status == WorkItemStatus.READY.value:
             row.status = WorkItemStatus.IN_PROGRESS.value
             row.updated_at = now
             row.version += 1
-            changed = True
-        if changed:
             row.save()
 
     def _lock_work_item(self, work_item_id: UUID) -> WorkItem | None:

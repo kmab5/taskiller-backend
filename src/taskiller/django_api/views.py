@@ -86,8 +86,11 @@ def _set_refresh_cookie(response: Response, issued: IssuedCredentials) -> None:
 
 def _clear_refresh_cookie(response: Response) -> None:
     settings = taskiller_settings()
-    response.delete_cookie(
+    response.set_cookie(
         key=REFRESH_COOKIE_NAME,
+        value="",
+        max_age=0,
+        expires="Thu, 01 Jan 1970 00:00:00 GMT",
         path=f"{settings.api_prefix}/auth",
         domain=settings.refresh_cookie_domain,
         secure=settings.cookie_secure,
