@@ -1,0 +1,595 @@
+{
+  "users": {
+    "label": "People",
+    "summary": "Accounts that own personal work and sign in to Taskiller.",
+    "why": "Keeps identity and access separate from work and session history.",
+    "lifecycle": "Created at registration; profile changes increase its version. Scheduling deletion disables access immediately; the worker later removes the account.",
+    "group": "auth",
+    "fields": {
+      "id": "Stable identifier used to refer to this person across requests and related records.",
+      "email": "Sign-in and recovery address; addresses are unique regardless of letter case.",
+      "password_hash": "One-way password verifier used to check sign-ins; never the raw password.",
+      "display_name": "Optional name shown in the profile; empty when no name was supplied.",
+      "email_verified_at": "When ownership of the email address was confirmed; empty before verification.",
+      "password_changed_at": "When the password was last set, recording the latest credential change.",
+      "is_active": "Whether the person may use the account; switched off when deletion is scheduled.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes.",
+      "created_at": "When this person record was first saved.",
+      "updated_at": "When this person record was last changed."
+    },
+    "notes": [
+      "Account deletion is handled by the worker in an explicit dependency order, rather than automatic Django cascades."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "user_preferences": {
+    "label": "Personal preferences",
+    "summary": "One set of display and focus preferences per person.",
+    "why": "Lets planning and date-based views respect the person’s settings.",
+    "lifecycle": "Created with the account; updated independently with its own version; removed during account deletion.",
+    "group": "auth",
+    "fields": {
+      "user": "The person these preferences belong to; also identifies this single preferences record.",
+      "timezone": "Named local timezone used to interpret local dates and reporting boundaries.",
+      "locale": "Preferred language and regional presentation setting.",
+      "week_starts_on": "Chosen first weekday for weekly views, represented from 0 through 6.",
+      "preferred_strategy": "Default focus approach: auto, continuous, structured, or flexible.",
+      "preferred_work_block_min_seconds": "Preferred shortest work block for recommendations; empty means no personal minimum.",
+      "preferred_work_block_max_seconds": "Preferred longest work block for recommendations; empty means no personal maximum.",
+      "show_review_prompt": "Whether the interface should offer a review prompt after a session.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes.",
+      "created_at": "When this preferences record was first saved.",
+      "updated_at": "When this preferences record was last changed."
+    },
+    "notes": [
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/user_service.py",
+      "src/taskiller/django_operations/worker_service.py"
+    ]
+  },
+  "auth_sessions": {
+    "label": "Sign-in sessions",
+    "summary": "A signed-in device or browser and its refresh-token family.",
+    "why": "Allows a device’s access to be revoked without confusing it with a focus session.",
+    "lifecycle": "Created on sign-in; refreshed while valid; expires or is revoked on logout, security action, or account deletion.",
+    "group": "auth",
+    "fields": {
+      "id": "Stable identifier used to refer to this sign-in session across requests and related records.",
+      "user": "The person signed in through this device or browser.",
+      "device_name": "Optional device label; empty when the client did not supply one.",
+      "created_at": "When this sign-in session record was first saved.",
+      "last_used_at": "Last recorded use of this sign-in session, including successful refresh; may be empty if not recorded.",
+      "expires_at": "Latest time this sign-in session can remain valid.",
+      "revoked_at": "When this session was deliberately blocked; empty while it has not been revoked.",
+      "revocation_reason": "Reason access was blocked, such as logout or refresh-token reuse; empty if none was recorded."
+    },
+    "notes": [
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "refresh_tokens": {
+    "label": "Refresh tokens",
+    "summary": "Stored verifiers for rotating credentials that renew access.",
+    "why": "Supports renewal and detects reuse of an already rotated credential.",
+    "lifecycle": "Issued with a sign-in session; replaced on refresh; expired tokens are removed by retention and all tokens are removed with the account.",
+    "group": "auth",
+    "fields": {
+      "id": "Stable identifier used to refer to this refresh token across requests and related records.",
+      "session": "The sign-in session this credential renews.",
+      "token_hash": "Secret-keyed fingerprint used to match a presented refresh token; not the usable token itself.",
+      "created_at": "When this refresh token record was first saved.",
+      "expires_at": "Time after which this credential cannot renew access.",
+      "rotated_at": "When this credential was exchanged for a replacement; empty until rotated.",
+      "revoked_at": "When this credential was explicitly invalidated; empty if not revoked.",
+      "replaced_by": "The next refresh token issued in this rotation chain; empty before rotation or after the referenced expired token is cleaned up."
+    },
+    "notes": [
+      "Reusing a rotated token can revoke the entire sign-in session.",
+      "Cleanup clears replacement links before deleting referenced tokens.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "email_verification_tokens": {
+    "label": "Email verification tokens",
+    "summary": "Single-use credential verifiers that let a person confirm ownership of an email address.",
+    "why": "Makes emailed account actions expire and prevents reuse.",
+    "lifecycle": "Issued for the email action; marked consumed when used or invalidated by a successful related action; removed after expiry or account deletion.",
+    "group": "auth",
+    "fields": {
+      "id": "Stable identifier used to refer to this email verification token across requests and related records.",
+      "user": "The person allowed to use this account action.",
+      "token_hash": "Secret-keyed fingerprint checked against the emailed token; not the usable token itself.",
+      "created_at": "When this email verification token record was first saved.",
+      "expires_at": "Deadline for using this emailed action.",
+      "consumed_at": "When this action was used or invalidated; empty while it remains unconsumed."
+    },
+    "notes": [
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "password_reset_tokens": {
+    "label": "Password reset tokens",
+    "summary": "Single-use credential verifiers that let a person set a replacement password after recovery.",
+    "why": "Makes emailed account actions expire and prevents reuse.",
+    "lifecycle": "Issued for the email action; marked consumed when used or invalidated by a successful related action; removed after expiry or account deletion.",
+    "group": "auth",
+    "fields": {
+      "id": "Stable identifier used to refer to this password reset token across requests and related records.",
+      "user": "The person allowed to use this account action.",
+      "token_hash": "Secret-keyed fingerprint checked against the emailed token; not the usable token itself.",
+      "created_at": "When this password reset token record was first saved.",
+      "expires_at": "Deadline for using this emailed action.",
+      "consumed_at": "When this action was used or invalidated; empty while it remains unconsumed."
+    },
+    "notes": [
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "idempotency_records": {
+    "label": "Request receipts",
+    "summary": "Saved outcomes of requests that clients may safely retry.",
+    "why": "Prevents a repeated click or network retry from creating the same result twice.",
+    "lifecycle": "Claimed and completed within the operation’s transaction; reused for matching retries until expiry, then reset or removed by retention.",
+    "group": "operations",
+    "fields": {
+      "owner_id": "Person whose request is being remembered; a plain identifier, not a Django foreign-key relationship.",
+      "scope": "Operation being protected, so one retry key does not collide with an unrelated action.",
+      "idempotency_key": "Client-supplied retry key; identifies a receipt together with the person and operation.",
+      "request_hash": "Fingerprint of the original request contents; rejects the same retry key with different contents.",
+      "response_status": "Saved HTTP outcome for replay; empty until the operation records its result.",
+      "response_body_json": "Structured response saved for an identical retry; empty before completion.",
+      "resource_id": "Identifier of the result when the operation has one; empty for outcomes without a linked resource.",
+      "created_at": "When this request receipt record was first saved.",
+      "expires_at": "End of the retry guarantee for this receipt."
+    },
+    "notes": [
+      "The combined key is owner_id, scope, and idempotency_key; pk is a virtual convenience, not a stored column."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "work_types": {
+    "label": "Work types",
+    "summary": "Built-in and personal categories describing how work feels.",
+    "why": "Supplies planning characteristics without making people describe every Chore from scratch.",
+    "lifecycle": "Built-in types are seeded and read-only through the API. Personal types can be edited and deleted only when no work item still references them.",
+    "group": "work",
+    "fields": {
+      "id": "Stable identifier used to refer to this work type across requests and related records.",
+      "owner": "Person who owns a custom type; empty for a shared built-in type.",
+      "slug": "Stable short name, unique without regard to letter case within its personal or shared collection.",
+      "display_name": "Readable category name shown when choosing a work type.",
+      "description": "Optional explanation of when to use this category.",
+      "cognitive_demand": "How much mental concentration this kind of work usually needs.",
+      "interruption_sensitivity": "How disruptive interruptions usually are for this kind of work.",
+      "continuity_need": "How much this work benefits from an uninterrupted stretch.",
+      "repetitiveness": "How repetitive the work usually is.",
+      "physicality": "How much physical activity the work involves.",
+      "learning_mode": "How learning is involved, helping choose practice or retrieval segments.",
+      "is_system": "Whether this is a shared built-in type; built-ins have no owner.",
+      "created_at": "When this work type record was first saved.",
+      "updated_at": "When this work type record was last changed.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes."
+    },
+    "notes": [
+      "Even soft-deleted work items still prevent deleting their referenced work type.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "work_items": {
+    "label": "Work items",
+    "summary": "Projects, Sprints, and Chores in one owned hierarchy.",
+    "why": "Connects outcomes and plans to the actual work performed in focus sessions.",
+    "lifecycle": "Captured as draft work and moved through ready, in_progress, completed, cancelled, or archived. Ordinary deletion marks deleted_at and preserves the row; account deletion removes it permanently.",
+    "group": "work",
+    "fields": {
+      "id": "Stable identifier used to refer to this work item across requests and related records.",
+      "owner": "Person who owns this work and its hierarchy.",
+      "kind": "Whether this is a root Project, a Project’s Sprint, or an executable Chore.",
+      "parent": "Containing Project or Sprint; empty for Projects and inbox Chores. A Sprint must belong to a Project.",
+      "work_type": "Built-in or personally owned category supplying default work characteristics; empty when no category is selected.",
+      "name": "Work title shown in lists and planning.",
+      "description": "Optional details about the intended work or outcome.",
+      "status": "Current progress state, independent of the soft-deletion marker.",
+      "position": "Ordering value among siblings, used to preserve the person’s chosen sequence.",
+      "priority": "Optional priority chosen for this item; empty when no priority has been assigned.",
+      "estimated_effort_seconds": "Expected amount of work, used by recommendations; empty when not estimated.",
+      "planned_start_at": "Optional intended start moment, used to compare planned and actual work.",
+      "deadline_at": "Optional latest desired completion moment.",
+      "target_start_date": "Optional calendar start date for a Project or Sprint, rather than a timed appointment.",
+      "target_end_date": "Optional calendar end date for a Project or Sprint.",
+      "cognitive_demand_override": "Item-specific setting for how much mental concentration this kind of work usually needs. Empty means use the work type’s value when available.",
+      "interruption_sensitivity_override": "Item-specific setting for how disruptive interruptions usually are for this kind of work. Empty means use the work type’s value when available.",
+      "continuity_need_override": "Item-specific setting for how much this work benefits from an uninterrupted stretch. Empty means use the work type’s value when available.",
+      "repetitiveness_override": "Item-specific setting for how repetitive the work usually is. Empty means use the work type’s value when available.",
+      "physicality_override": "Item-specific setting for how much physical activity the work involves. Empty means use the work type’s value when available.",
+      "learning_mode_override": "Item-specific setting for how learning is involved, helping choose practice or retrieval segments. Empty means use the work type’s value when available.",
+      "completed_at": "When the item was marked complete; empty when no completion is recorded.",
+      "cancelled_at": "When the item was cancelled; empty when no cancellation is recorded.",
+      "archived_at": "When the item was archived; empty when not archived.",
+      "deleted_at": "When ordinary deletion hid this item; empty for items still available in normal lists.",
+      "created_at": "When this work item record was first saved.",
+      "updated_at": "When this work item record was last changed.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes."
+    },
+    "notes": [
+      "Projects are roots; Sprints belong to Projects; Chores can belong to Projects, Sprints, or the inbox.",
+      "Database relationship guards reject cross-owner links and invalid hierarchy changes.",
+      "The API requires live children to be moved or deleted before their parent can be soft-deleted.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "focus_plan_recommendations": {
+    "label": "Focus recommendations",
+    "summary": "Saved planning suggestions with their inputs and reasons.",
+    "why": "Makes a recommendation explainable after preferences, work, or the engine change.",
+    "lifecycle": "Created for an executable Chore or Sprint; saved snapshots are read back rather than regenerated. Removed during account deletion.",
+    "group": "focus",
+    "fields": {
+      "id": "Stable identifier used to refer to this focus recommendation across requests and related records.",
+      "owner": "Person who requested this suggestion.",
+      "work_item": "Owned Chore or Sprint this suggestion was made for.",
+      "engine_version": "Planning-engine revision that produced the suggestion.",
+      "provenance": "Whether the suggestion used bootstrap rules, preferences, or personal history.",
+      "strategy": "Focus approach selected by the engine.",
+      "input_snapshot_json": "Structured copy of work context, available time, requested strategy, preferences, and any personalization signal at generation time.",
+      "plan_snapshot_json": "Structured suggested plan, including segment kinds and proposed durations as they were generated.",
+      "reasons_json": "Structured explanations with reason codes, evidence labels, and readable messages.",
+      "created_at": "When this focus recommendation record was first saved."
+    },
+    "notes": [
+      "Recommendations preserve what was suggested; they are separate from editable Focus Plans.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py"
+    ]
+  },
+  "focus_plans": {
+    "label": "Focus plans",
+    "summary": "Named sequences of focus segments, optionally saved as templates.",
+    "why": "Turns a recommendation or manual choice into a reusable execution plan.",
+    "lifecycle": "Created manually, from a recommendation, or from a template; edits replace segment definitions and increase the version. Soft-deleted through the API and removed permanently with the account.",
+    "group": "focus",
+    "fields": {
+      "id": "Stable identifier used to refer to this focus plan across requests and related records.",
+      "owner": "Person who owns the plan.",
+      "work_item": "Chore or Sprint this plan targets; may be empty for an unbound plan or template.",
+      "recommendation": "Saved suggestion associated with this plan; empty when no recommendation is linked.",
+      "source": "How the plan was created: manual, recommendation, or template.",
+      "name": "Readable plan title.",
+      "is_template": "Whether the plan is saved for reuse as a template.",
+      "deleted_at": "When this plan was hidden by ordinary deletion; empty while available.",
+      "created_at": "When this focus plan record was first saved.",
+      "updated_at": "When this focus plan record was last changed.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes."
+    },
+    "notes": [
+      "Execution uses a saved copy of the segments, so later plan edits do not rewrite a running or past session.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py"
+    ]
+  },
+  "focus_plan_segments": {
+    "label": "Plan segments",
+    "summary": "Ordered steps defining work, breaks, and supporting activities.",
+    "why": "Gives the session a clear sequence and duration guidance.",
+    "lifecycle": "Created or replaced with the owning plan; copied into a session when execution starts; removed during account deletion.",
+    "group": "focus",
+    "fields": {
+      "id": "Stable identifier used to refer to this plan segment across requests and related records.",
+      "focus_plan": "Plan containing this step.",
+      "segment_index": "Zero-based place in the plan; each place is unique within that plan.",
+      "kind": "Activity for this step: work, break, long_break, retrieval, review, planning, or transition.",
+      "duration_mode": "Whether timing is fixed, flexible, or open-ended.",
+      "target_seconds": "Planned duration in seconds, not actual elapsed work; required for fixed and flexible steps, optional for open steps.",
+      "min_seconds": "Optional lower duration guide; empty when no minimum is specified.",
+      "max_seconds": "Optional upper duration guide; empty when no maximum is specified.",
+      "linked_work_item": "Optional Chore to work on in this step: the target Chore itself or a direct child of the target Sprint. Breaks and transitions cannot link work.",
+      "optional": "Whether the session may skip this step.",
+      "label": "Optional short caption for the step; empty when the activity kind is enough.",
+      "instructions": "Optional guidance for carrying out the step."
+    },
+    "notes": [
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "execution_sessions": {
+    "label": "Execution sessions",
+    "summary": "Actual runs of a Focus Plan against a Chore or Sprint.",
+    "why": "Records what was attempted while keeping the original plan and work context stable for history and analytics.",
+    "lifecycle": "Starts running, can pause and resume, and ends completed or abandoned. Only one running or paused session is allowed per person; account deletion removes its history.",
+    "group": "execution",
+    "fields": {
+      "id": "Stable identifier used to refer to this execution session across requests and related records.",
+      "owner": "Person performing this session.",
+      "work_item": "Owned Chore or Sprint being executed; Projects must resolve to executable work first.",
+      "focus_plan": "Plan used to start the run; live edits do not replace the saved session plan.",
+      "recommendation": "Associated saved suggestion, if one was used; empty for runs without a recommendation.",
+      "state": "Whether the run is running, paused, completed, or abandoned.",
+      "current_segment_index": "Zero-based position in the saved plan; advances after finishing or skipping a step.",
+      "session_started_at": "Server-recorded start of the run.",
+      "current_segment_started_at": "Timing anchor for the active step; empty between steps or after ending. Resuming shifts it forward to exclude paused time.",
+      "paused_at": "When the current pause began; empty while not paused.",
+      "ended_at": "When the run completed or was abandoned; empty while still open.",
+      "plan_snapshot_json": "Structured copy of segment order, duration choices, links, and instructions captured at start; preserves the plan actually executed.",
+      "recommendation_snapshot_json": "Structured copy of the linked recommendation and its reasoning at start; empty when no recommendation was used.",
+      "work_context_snapshot_json": "Structured start-time context for the target and linked Chores, including ancestry, work type, estimate, and planned start, so later edits do not change historical attribution.",
+      "created_at": "When this execution session record was first saved.",
+      "updated_at": "When this execution session record was last changed.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes."
+    },
+    "notes": [
+      "Server timestamps govern transitions; the client clock does not control elapsed-time history.",
+      "Snapshots are structured application records, not the portable import/export document format.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "session_events": {
+    "label": "Session events",
+    "summary": "Append-only records of accepted session actions.",
+    "why": "Explains how a session reached its current state and lets retries return the original result.",
+    "lifecycle": "Added as the session starts and actions are accepted; never edited. Only account deletion may remove them using the database deletion flag.",
+    "group": "execution",
+    "fields": {
+      "id": "Stable identifier used to refer to this session event across requests and related records.",
+      "session": "Execution session in which the action occurred.",
+      "owner": "Person who owns the session; must match the session owner.",
+      "type": "Action recorded, such as pause, resume, segment completion, or session abandonment.",
+      "occurred_at": "Authoritative server time of the action, used for ordered history and timing.",
+      "client_occurred_at": "Optional time reported by the client for context; does not replace server timing.",
+      "segment_index": "Step this action refers to; empty for actions that do not identify a step.",
+      "idempotency_key": "Retry key unique within this session, preventing the action from being applied twice.",
+      "request_hash": "Fingerprint of the action request; detects a retry key reused with different contents.",
+      "payload_json": "Structured action details, such as a work item to complete; not a standalone portable export.",
+      "result_session_snapshot_json": "Session response saved immediately after the action, so a retry returns its original outcome even after later actions.",
+      "created_at": "When this session event record was first saved."
+    },
+    "notes": [
+      "Migration 0004 rejects every event update and rejects deletion unless taskiller.account_deletion is on for the transaction.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "session_reviews": {
+    "label": "Session reviews",
+    "summary": "Optional personal reflection after a completed or abandoned session.",
+    "why": "Provides explicit feedback for reflection and history-informed recommendations.",
+    "lifecycle": "Saved only after the session ends; one review per session can be revised, increasing its version; removed during account deletion.",
+    "group": "execution",
+    "fields": {
+      "session": "Completed or abandoned session being reviewed; also identifies its single review.",
+      "owner": "Person writing the review; must own the session.",
+      "focus_score": "Optional self-rating of concentration; empty if not answered.",
+      "fatigue_score": "Optional self-rating of tiredness; empty if not answered.",
+      "difficulty_score": "Optional self-rating of how hard the session felt; empty if not answered.",
+      "satisfaction_score": "Optional self-rating of satisfaction with the session; empty if not answered.",
+      "note": "Optional written reflection.",
+      "created_at": "When this session review record was first saved.",
+      "updated_at": "When this session review record was last changed.",
+      "version": "Revision counter increased on changes, allowing clients to detect stale data and, where required, reject conflicting writes."
+    },
+    "notes": [
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0004_relationship_guards.py"
+    ]
+  },
+  "data_export_requests": {
+    "label": "Data exports",
+    "summary": "Background requests for a downloadable personal-data archive.",
+    "why": "Lets a person retrieve account and activity records without blocking the request while an archive is built.",
+    "lifecycle": "Queued, then processing, then ready or failed. Ready downloads expire; retention clears expired archive bytes and size while keeping request metadata. Account deletion removes the record.",
+    "group": "operations",
+    "fields": {
+      "id": "Stable identifier used to refer to this data export request across requests and related records.",
+      "user": "Person whose data is included in the archive.",
+      "status": "Progress of archive preparation: queued, processing, ready, or failed.",
+      "created_at": "When this data export request record was first saved.",
+      "started_at": "When the worker began preparation; empty before processing starts.",
+      "completed_at": "When archive generation successfully finished; empty before successful completion.",
+      "expires_at": "When the archive stops being downloadable; set after generation, empty before readiness.",
+      "archive_bytes": "Gzip-compressed JSON archive held for download; empty before generation or after retention removes it.",
+      "archive_sha256": "Fingerprint of the compressed archive for integrity checking; empty before generation.",
+      "archive_size_bytes": "Download size of the compressed archive; empty before generation or after expiry cleanup.",
+      "failure_code": "Safe explanation code if generation fails permanently; empty when no failure is recorded."
+    },
+    "notes": [
+      "The worker produces taskiller-data-export-v1, a privacy archive; this is distinct from the portable import/export format.",
+      "Password hashes, authentication tokens, rate-limit buckets, and internal outbox jobs are excluded.",
+      "Relationships use DO_NOTHING: Django does not automatically delete related records; account cleanup is ordered explicitly by the worker."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/privacy_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "account_deletion_requests": {
+    "label": "Account deletions",
+    "summary": "Scheduled deletion requests that survive removal of the account.",
+    "why": "Tracks the grace period and confirms cleanup without requiring the person’s account to remain.",
+    "lifecycle": "Scheduling disables the account and revokes sign-in sessions immediately. After execute_after, the worker removes dependent records and the person; completed tombstones are later removed by retention.",
+    "group": "operations",
+    "fields": {
+      "id": "Stable identifier used to refer to this account deletion request across requests and related records.",
+      "user_id": "Identifier of the person to delete; deliberately not a foreign key so this completion record can survive deletion of the users row.",
+      "status": "Deletion progress: scheduled, processing, completed, or failed.",
+      "requested_at": "When the person requested deletion.",
+      "execute_after": "Earliest scheduled cleanup time, after the configured grace period.",
+      "started_at": "When worker cleanup began; empty before processing.",
+      "completed_at": "When permanent cleanup finished; empty until completion.",
+      "failure_code": "Safe failure code if cleanup exhausts its retries; empty when no failure is recorded."
+    },
+    "notes": [
+      "DO_NOTHING relationships require the worker to delete dependent rows explicitly, including children before parents.",
+      "The worker enables taskiller.account_deletion only within its deletion transaction so guarded session events can be removed."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/privacy_service.py",
+      "src/taskiller/django_operations/worker_service.py"
+    ]
+  },
+  "outbox_jobs": {
+    "label": "Background jobs",
+    "summary": "Durable queued work for email, exports, account deletion, and retention.",
+    "why": "Allows requests to commit intended background work and lets workers recover from interruptions.",
+    "lifecycle": "Queued until available, claimed as running under a lease, then succeeded; failures retry with backoff until dead. Expired leases are recovered; terminal history is retained for a configured period.",
+    "group": "operations",
+    "fields": {
+      "id": "Stable identifier used to refer to this background job across requests and related records.",
+      "job_type": "Handler to run: auth_email, data_export, account_delete, or retention.",
+      "payload_json": "Structured handler inputs, such as a request identifier; email jobs may contain sensitive delivery inputs and should not be exposed as guide examples.",
+      "status": "Queue state: queued, running, succeeded, or dead after retry exhaustion.",
+      "available_at": "Earliest time a queued job may be claimed; also carries delayed deletion and retry scheduling.",
+      "locked_at": "When the current claim began; empty when no worker holds it.",
+      "locked_by": "Random claim token identifying the current lease, not the worker hostname; empty when unclaimed.",
+      "lease_expires_at": "Deadline for the claim; empty when unclaimed. Expiry allows recovery and prevents a stale claim from acknowledging completion.",
+      "attempts": "Number of claims already made, increased each time a worker takes the job.",
+      "max_attempts": "Claim limit before another failure makes the job dead.",
+      "last_error": "Last failure’s exception class name, deliberately excluding provider messages that may contain credentials or links; empty before failure or after success.",
+      "created_at": "When this background job record was first saved.",
+      "updated_at": "When this background job record was last changed.",
+      "completed_at": "When the job succeeded or became dead; empty while queued or running."
+    },
+    "notes": [
+      "The worker commits database effects and successful acknowledgement together.",
+      "Retry failures clear the claim and defer available_at; exhausted export and deletion jobs also mark their request failed."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  },
+  "rate_limit_buckets": {
+    "label": "Request limits",
+    "summary": "Shared counters that limit repeated sensitive requests.",
+    "why": "Keeps throttling consistent across API processes without storing raw request subjects.",
+    "lifecycle": "Requests increment a counter in a locked row; a new time window resets it. Retention deletes inactive buckets.",
+    "group": "auth",
+    "fields": {
+      "scope": "Sensitive operation being limited, giving each kind of request its own allowance.",
+      "subject_hash": "Secret-keyed fingerprint of the limiting subject, which can combine client address and account context; not the raw address or email.",
+      "window_started_at": "Start of the active counting window.",
+      "count": "Attempts counted in this window, including attempts above the allowance.",
+      "updated_at": "Last counted attempt, used to remove inactive buckets."
+    },
+    "notes": [
+      "The combined key is scope and subject_hash; virtual pk has no stored column."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_operations/worker_service.py"
+    ]
+  },
+  "security_events": {
+    "label": "Security events",
+    "summary": "Append-only audit records of security-related activity.",
+    "why": "Supports investigation without making audit history depend on an account’s continued existence.",
+    "lifecycle": "Recorded when security actions occur; never updated. Retention can delete old entries under a dedicated database flag; account deletion does not delete these rows.",
+    "group": "auth",
+    "fields": {
+      "id": "Stable identifier used to refer to this security event across requests and related records.",
+      "user_id": "Optional identifier of the person involved; deliberately not a foreign key, so events can exist without a known person and survive account deletion.",
+      "event_type": "Security action or outcome being recorded.",
+      "subject_hash": "Optional secret-keyed fingerprint of the client address, allowing related activity to be compared without storing the raw address.",
+      "user_agent": "Optional client browser or application description, limited to 300 characters; empty when absent.",
+      "metadata_json": "Structured contextual details supplied by the security action; an empty object means no extra details were provided.",
+      "created_at": "When this security event record was first saved."
+    },
+    "notes": [
+      "Migration 0005 rejects updates and allows deletion only when taskiller.retention is on for the transaction."
+    ],
+    "source": [
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_domain/migrations/0005_security_event_history.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py"
+    ]
+  }
+}

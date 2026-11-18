@@ -1,0 +1,2305 @@
+{
+  "getFocusPatterns": {
+    "title": "Explore your focus patterns",
+    "what": "Calculates uninterrupted work lengths and focus-review scores by type and activity by local hour. Includes sample sizes and whether evidence qualifies for recommendation personalization.",
+    "why": "Helps interpret habits together with their evidence. The same rules can inform later Chore recommendations when enough history exists.",
+    "reads": [
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "work_items",
+      "work_types",
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate the offset-aware from/to range and load history and timezone.",
+      "Consider completed sessions ending in the range and derive active intervals.",
+      "Group whole uninterrupted intervals of at least five minutes by type and split activity by local hour.",
+      "Calculate medians, quartiles, sample sizes and eligibility and return patterns."
+    ],
+    "notes": [
+      "Type-duration quartiles describe the middle spread of uninterrupted blocks, not a productivity ranking. Hourly results use your saved local timezone.",
+      "The range includes start and excludes end; from must precede to. This does not edit preferences or plans.",
+      "Eligibility requires at least five qualifying intervals. With three or more focus reviews it requires five sessions and a median focus score of at least 3; with fewer reviews it requires eight sessions.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/analytics_views.py",
+      "src/taskiller/django_api/analytics_service.py",
+      "src/taskiller/analytics/service.py",
+      "src/taskiller/analytics/derive.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "analytics"
+  },
+  "getAnalyticsSummary": {
+    "title": "Summarize recorded work",
+    "what": "Calculates work, break and pause time, completed and abandoned sessions, completed Chores, uninterrupted blocks, estimate error, start delay and required-segment adherence. Returns calculated results without saving an analytics row.",
+    "why": "Helps you review what actually happened rather than treating planned work as completed work. Missing evidence yields empty totals or unavailable statistics instead of invented scores.",
+    "reads": [
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "work_items",
+      "work_types",
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate offset-aware from and to with from earlier than to.",
+      "Load owned history, events, reviews, work context, types and preferences.",
+      "Derive event-based intervals, clip time to the requested range and calculate totals and medians.",
+      "Return the summary."
+    ],
+    "notes": [
+      "The range includes its start and excludes its end. Historical session context is preferred, with current work as fallback.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/analytics_views.py",
+      "src/taskiller/django_api/analytics_service.py",
+      "src/taskiller/analytics/service.py",
+      "src/taskiller/analytics/derive.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "analytics"
+  },
+  "getAnalyticsTimeseries": {
+    "title": "Chart activity by day or week",
+    "what": "Calculates daily or weekly work, break and pause totals plus completed sessions and Chores. Uses saved timezone and week-start settings for calendar boundaries.",
+    "why": "Makes trends visible without storing another copy of activity. Empty buckets distinguish a quiet period from a missing chart point.",
+    "reads": [
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "work_items",
+      "work_types",
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate offset-aware from/to and require bucket=day or bucket=week.",
+      "Load history and calendar preferences.",
+      "Derive intervals, split them across local bucket boundaries and count completion events.",
+      "Return ordered points and timezone."
+    ],
+    "notes": [
+      "from is inclusive, to exclusive, and from must precede to. One interval can contribute time to several buckets. No aggregation job is queued.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/analytics_views.py",
+      "src/taskiller/django_api/analytics_service.py",
+      "src/taskiller/analytics/service.py",
+      "src/taskiller/analytics/derive.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "analytics"
+  },
+  "getWorkItemAnalytics": {
+    "title": "Review activity for one work item",
+    "what": "Calculates measured time, session count, estimate error, adherence and first-start information for an owned work item. Projects and Sprints can include descendant activity through captured ancestor context.",
+    "why": "Shows effort toward an outcome beyond its current status label. Historical ancestry keeps recorded activity tied to the structure captured at session start.",
+    "reads": [
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "work_items",
+      "work_types",
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate the offset-aware time range and load owned history.",
+      "Require the work item to exist and resolve target and linked-item ancestry.",
+      "Aggregate in-scope work time and applicable session-level breaks, pauses and adherence.",
+      "Return metrics and the current item completion timestamp."
+    ],
+    "notes": [
+      "The loader includes soft-deleted owned items. from is inclusive, to exclusive, and from must precede to.",
+      "firstStartedAt is drawn from loaded history before the range end and is not restricted to starts inside the range. completedAt is the current work-item field.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/analytics_views.py",
+      "src/taskiller/django_api/analytics_service.py",
+      "src/taskiller/analytics/service.py",
+      "src/taskiller/analytics/derive.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "analytics"
+  },
+  "getWorkTypeAnalytics": {
+    "title": "Compare activity by work type",
+    "what": "Groups measured activity by historical work-type ID and slug. Includes active time, session count, typical uninterrupted work, estimate error, completion rate and focus-review scores when available.",
+    "why": "Shows how different kinds of work fit your habits. Captured context keeps a later category edit from silently relabeling old sessions.",
+    "reads": [
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "work_items",
+      "work_types",
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate the offset-aware time range and load history.",
+      "Derive intervals and resolve captured work types.",
+      "Group time, session outcomes, estimates and review scores by type.",
+      "Return per-type measures with unavailable statistics left null."
+    ],
+    "notes": [
+      "from is inclusive and to exclusive; from must precede to. A session touching several types can appear in several groups, so group counts need not sum to distinct sessions.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/analytics_views.py",
+      "src/taskiller/django_api/analytics_service.py",
+      "src/taskiller/analytics/service.py",
+      "src/taskiller/analytics/derive.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "analytics"
+  },
+  "confirmEmailVerification": {
+    "title": "Confirm your email address",
+    "what": "Consumes a valid verification token and immediately marks its active account email verified. The one-time token supplies proof without requiring bearer authentication.",
+    "why": "Completes the email ownership check. Consuming outstanding verification tokens prevents reuse.",
+    "reads": [
+      "email_verification_tokens",
+      "users",
+      "rate_limit_buckets"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for the verification-confirmation IP limit, count the attempt and reset elapsed windows. These changes can persist even if the main request is rejected. Normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "email_verification_tokens",
+        "action": "update",
+        "detail": "Consume all unconsumed verification tokens for the account."
+      },
+      {
+        "table": "users",
+        "action": "update",
+        "detail": "If not yet verified, set email_verified_at, increase version and update modification time."
+      }
+    ],
+    "steps": [
+      "Count attempts and validate the submitted token.",
+      "Find its hash, lock account and token, and check expiry, consumption and activity.",
+      "Consume outstanding tokens and mark email verified; return 204."
+    ],
+    "notes": [
+      "Invalid, expired or consumed tokens return 400. This does not create a login session.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "requestEmailVerification": {
+    "title": "Ask for a verification email",
+    "what": "Accepts a request to verify your account email. When eligible, saves a one-time token hash and queues an email job immediately; delivery happens later.",
+    "why": "Starts proof that you control the account address. Cooldowns and network/account budgets prevent repeated mail requests.",
+    "reads": [
+      "users",
+      "email_verification_tokens",
+      "rate_limit_buckets",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for email-verification IP and user limits, count the attempt and reset elapsed windows. These changes can persist even if the main request is rejected. Normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "email_verification_tokens",
+        "action": "insert",
+        "detail": "Save an expiring verification-token hash only for an active, unverified account outside cooldown."
+      },
+      {
+        "table": "outbox_jobs",
+        "action": "insert/update",
+        "detail": "Immediately queue auth_email when eligible. Later the worker claims, retries if needed, and records job completion."
+      }
+    ],
+    "steps": [
+      "Count the IP and user request budgets.",
+      "Lock the account and check verification status and recent token creation.",
+      "If eligible, save token hash and email job atomically; return 202.",
+      "Later the worker checks token/account validity and sends through the configured email sender."
+    ],
+    "notes": [
+      "202 does not guarantee delivery or a new token. Already verified accounts and cooldown requests are no-ops.",
+      "The worker skips consumed or expired tokens, missing or inactive accounts, and already verified accounts.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_operations/email_delivery.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "login": {
+    "title": "Sign in on a device",
+    "what": "Checks email and password and immediately creates a new device session. Returns a short-lived access token and sets the browser refresh cookie.",
+    "why": "Lets you resume your work while keeping each device independently revocable. A generic credentials error avoids explaining which part of a failed sign-in was correct.",
+    "reads": [
+      "users",
+      "rate_limit_buckets"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for the IP-plus-email login limit, count the attempt and reset elapsed windows. These changes can persist even if the main request is rejected. Normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "auth_sessions",
+        "action": "insert",
+        "detail": "Create a new device session after successful password verification."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "insert",
+        "detail": "Store the new refresh-token hash."
+      },
+      {
+        "table": "security_events",
+        "action": "insert",
+        "detail": "After success, attempt to record login_succeeded with a hashed network subject and limited request metadata. Persistence is best effort; an audit failure does not undo the main result."
+      }
+    ],
+    "steps": [
+      "Validate and rate-limit the attempt.",
+      "Check the active account and password hash.",
+      "Save the session and refresh hash, record success, and return credentials."
+    ],
+    "notes": [
+      "The HTTP boundary rejects an untrusted Origin, or a cross-site browser request without Origin, with 403 before the view runs. Refresh credentials use an HttpOnly cookie scoped to the auth path; JavaScript receives the access token, not that cookie value.",
+      "Failed credentials do not create a session or a login_succeeded event.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/middleware.py"
+    ],
+    "group": "auth"
+  },
+  "logout": {
+    "title": "Sign out this device",
+    "what": "Immediately revokes the device session behind your current access token and clears its refresh cookie. Retains the account and work.",
+    "why": "Ends this device access without signing out other devices. Subsequent bearer requests also fail because they check the revoked session.",
+    "reads": [
+      "auth_sessions",
+      "refresh_tokens",
+      "users"
+    ],
+    "writes": [
+      {
+        "table": "auth_sessions",
+        "action": "update",
+        "detail": "Immediately set revocation time and reason for the selected sessions; retain their history."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "update",
+        "detail": "Immediately revoke remaining refresh credentials for the selected sessions; retain their rows."
+      }
+    ],
+    "steps": [
+      "Identify the authenticated device session.",
+      "Revoke that session and its remaining refresh tokens atomically.",
+      "Return 204 and clear the refresh cookie."
+    ],
+    "notes": [
+      "The HTTP boundary rejects an untrusted Origin, or a cross-site browser request without Origin, with 403 before the view runs. Refresh credentials use an HttpOnly cookie scoped to the auth path; JavaScript receives the access token, not that cookie value.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/middleware.py"
+    ],
+    "group": "auth"
+  },
+  "logoutAll": {
+    "title": "Sign out every device",
+    "what": "Immediately revokes every unrevoked device session for your account and clears this browser refresh cookie. Keeps session history.",
+    "why": "Provides one way to end access everywhere. You must sign in again to regain access.",
+    "reads": [
+      "auth_sessions",
+      "refresh_tokens",
+      "users"
+    ],
+    "writes": [
+      {
+        "table": "auth_sessions",
+        "action": "update",
+        "detail": "Immediately set revocation time and reason for the selected sessions; retain their history."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "update",
+        "detail": "Immediately revoke remaining refresh credentials for the selected sessions; retain their rows."
+      }
+    ],
+    "steps": [
+      "Lock your unrevoked sessions in a stable order.",
+      "Revoke each session and its remaining refresh credentials.",
+      "Return 204 and clear the refresh cookie."
+    ],
+    "notes": [
+      "The HTTP boundary rejects an untrusted Origin, or a cross-site browser request without Origin, with 403 before the view runs. Refresh credentials use an HttpOnly cookie scoped to the auth path; JavaScript receives the access token, not that cookie value.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/middleware.py"
+    ],
+    "group": "auth"
+  },
+  "confirmPasswordReset": {
+    "title": "Set a new password from a reset link",
+    "what": "Immediately replaces the password hash after checking a one-time reset token. Consumes outstanding reset tokens and revokes open device sessions and their refresh credentials.",
+    "why": "Completes recovery and ends access granted before the password change. You sign in again rather than receiving an automatic new session.",
+    "reads": [
+      "password_reset_tokens",
+      "users",
+      "auth_sessions",
+      "refresh_tokens",
+      "rate_limit_buckets"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for the reset-confirmation IP limit, count the attempt and reset elapsed windows. These changes can persist even if the main request is rejected. Normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "users",
+        "action": "update",
+        "detail": "Save the new password hash, password-change time, modification time and increased version."
+      },
+      {
+        "table": "password_reset_tokens",
+        "action": "update",
+        "detail": "Consume all unconsumed reset tokens for this account."
+      },
+      {
+        "table": "auth_sessions",
+        "action": "update",
+        "detail": "Immediately set revocation time and reason for the selected sessions; retain their history."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "update",
+        "detail": "Immediately revoke remaining refresh credentials for the selected sessions; retain their rows."
+      }
+    ],
+    "steps": [
+      "Rate-limit and validate token and new password.",
+      "Check validity and account activity, hash the password, then recheck under locks.",
+      "Save the password, consume reset tokens and revoke unrevoked sessions and their tokens atomically.",
+      "Return 204."
+    ],
+    "notes": [
+      "No bearer token is needed. Invalid, expired or consumed reset tokens return 400.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "requestPasswordReset": {
+    "title": "Ask for a password-reset email",
+    "what": "Accepts an address and returns an accepted response whether or not an eligible account exists. For an active account outside cooldown, saves a reset-token hash and queues email delivery.",
+    "why": "Starts recovery without exposing which addresses have accounts. Separate recipient and network budgets limit repeated messages.",
+    "reads": [
+      "users",
+      "password_reset_tokens",
+      "rate_limit_buckets"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for password-reset IP-plus-email and recipient-only limits, count the attempt and reset elapsed windows. These changes can persist even if the main request is rejected. Normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "password_reset_tokens",
+        "action": "insert",
+        "detail": "Create an expiring reset-token hash only for an eligible account."
+      },
+      {
+        "table": "outbox_jobs",
+        "action": "insert/update",
+        "detail": "Immediately queue auth_email if eligible; later the worker sends or skips it and records retry or completion."
+      }
+    ],
+    "steps": [
+      "Validate the address and count request budgets.",
+      "Return 202 without account lookup if the recipient budget is exhausted.",
+      "Otherwise check account activity and cooldown, queue eligible mail and return 202.",
+      "Later the worker sends only if the token and active account remain valid."
+    ],
+    "notes": [
+      "No bearer token is needed. Unknown addresses, cooldowns and exhausted recipient budgets also return 202. The password is not changed yet.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_operations/email_delivery.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "refreshAccessToken": {
+    "title": "Renew sign-in credentials",
+    "what": "Uses the refresh cookie to issue another access token and rotate its refresh credential immediately. The old refresh credential is marked as rotated.",
+    "why": "Keeps you signed in without repeating your password whenever an access token expires. Replaying an already rotated credential revokes the device session.",
+    "reads": [
+      "refresh_tokens",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [
+      {
+        "table": "refresh_tokens",
+        "action": "insert/update",
+        "detail": "On success insert a replacement hash and mark the previous token rotated with a replacement link. Replay, expiry or inactive-account branches revoke remaining tokens for that session."
+      },
+      {
+        "table": "auth_sessions",
+        "action": "update",
+        "detail": "Update last_used_at on successful rotation, or revoke the session on detected replay, expiry or inactive account."
+      }
+    ],
+    "steps": [
+      "Find the hash matching the refresh cookie.",
+      "Lock the session and token and check rotation, expiry, revocation and account activity.",
+      "Rotate and return new credentials, or persist the required revocation before rejecting."
+    ],
+    "notes": [
+      "The HTTP boundary rejects an untrusted Origin, or a cross-site browser request without Origin, with 403 before the view runs. Refresh credentials use an HttpOnly cookie scoped to the auth path; JavaScript receives the access token, not that cookie value.",
+      "No bearer token is required. This view does not write a security event or rate-limit counter.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/middleware.py"
+    ],
+    "group": "auth"
+  },
+  "register": {
+    "title": "Create an account",
+    "what": "Immediately creates your account, default preferences and first signed-in device session. Returns an access token and sets a refresh cookie.",
+    "why": "Lets a new person start with an independent account and personal defaults. The password is stored as a hash rather than readable text.",
+    "reads": [
+      "rate_limit_buckets"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for registration IP and IP-plus-email limits, count the attempt and reset elapsed windows. These changes can persist even if the main request is rejected. Normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "users",
+        "action": "insert",
+        "detail": "Create an active, initially unverified account with normalized email and hashed password."
+      },
+      {
+        "table": "user_preferences",
+        "action": "insert",
+        "detail": "Create timezone, locale, week-start, focus-strategy and review-prompt defaults."
+      },
+      {
+        "table": "auth_sessions",
+        "action": "insert",
+        "detail": "Create the first device login session."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "insert",
+        "detail": "Save only the hash of its refresh credential."
+      },
+      {
+        "table": "security_events",
+        "action": "insert",
+        "detail": "After success, attempt to record account_registered with a hashed network subject and limited request metadata. Persistence is best effort; an audit failure does not undo the main result."
+      }
+    ],
+    "steps": [
+      "Validate the account details and timezone; count registration attempts.",
+      "Create the account, preferences, device session and token hash in one transaction.",
+      "Record the audit event and return 201 with credentials and an HttpOnly refresh cookie."
+    ],
+    "notes": [
+      "The HTTP boundary rejects an untrusted Origin, or a cross-site browser request without Origin, with 403 before the view runs. Refresh credentials use an HttpOnly cookie scoped to the auth path; JavaScript receives the access token, not that cookie value.",
+      "Duplicate email returns 409. Registration does not itself queue a verification email.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/django_api/middleware.py"
+    ],
+    "group": "auth"
+  },
+  "listAuthSessions": {
+    "title": "See signed-in devices",
+    "what": "Lists your unrevoked, unexpired device sessions with device names and use times. Marks the session making this request as current.",
+    "why": "Helps you recognize where you are signed in and choose a device to revoke. Reading the list does not refresh session activity timestamps.",
+    "reads": [
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Select only your unexpired, unrevoked sessions.",
+      "Order by most recent use, then creation time.",
+      "Return device metadata and the current-device marker."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "revokeAuthSession": {
+    "title": "Sign out a selected device",
+    "what": "Immediately revokes one of your device sessions and its refresh tokens. Does not physically delete session history.",
+    "why": "Lets you remove access from a lost or unfamiliar device independently. Revoking your current device also clears its refresh cookie.",
+    "reads": [
+      "auth_sessions",
+      "refresh_tokens",
+      "users"
+    ],
+    "writes": [
+      {
+        "table": "auth_sessions",
+        "action": "update",
+        "detail": "Immediately set revocation time and reason for the selected sessions; retain their history."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "update",
+        "detail": "Immediately revoke remaining refresh credentials for the selected sessions; retain their rows."
+      }
+    ],
+    "steps": [
+      "Find the session within your account.",
+      "Revoke it and its remaining refresh tokens if needed.",
+      "Return 204; clear the cookie if this is the current session."
+    ],
+    "notes": [
+      "An unknown or foreign-owned session returns 404. An already revoked owned session can return 204 again.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/auth_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "listExecutionSessions": {
+    "title": "Browse your session history",
+    "what": "Returns a newest-first page of your execution sessions. Can filter by work item, state and session-start time boundaries.",
+    "why": "Lets History screens locate earlier work attempts and open their recorded state. Reading history does not advance a timer or save analytics.",
+    "reads": [
+      "execution_sessions",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate page size, state, work-item ID and optional offset-aware dates.",
+      "Filter owned sessions and apply descending start-time/ID cursor.",
+      "Return snapshots and next-page information."
+    ],
+    "notes": [
+      "Page size defaults to 25 and must be 1 to 100. from is inclusive and to exclusive for session start times; when both are present, from must precede to.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "execution"
+  },
+  "startExecutionSession": {
+    "title": "Start working with a focus plan",
+    "what": "Immediately creates a running session for a Chore or Sprint with a matching non-template plan. Captures historical snapshots and automatically starts its first segment.",
+    "why": "Turns a saved schedule into recorded work with server-controlled times. Snapshots preserve the plan, recommendation and work context even after later edits.",
+    "reads": [
+      "users",
+      "execution_sessions",
+      "work_items",
+      "work_types",
+      "focus_plans",
+      "focus_plan_segments",
+      "focus_plan_recommendations",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "execution_sessions",
+        "action": "insert",
+        "detail": "Create a running session at segment zero with server times and plan, recommendation and work-context snapshots."
+      },
+      {
+        "table": "session_events",
+        "action": "insert",
+        "detail": "Automatically record session_started and the first segment_started or break_started event."
+      },
+      {
+        "table": "work_items",
+        "action": "update",
+        "detail": "Move the target from draft through ready to in_progress as needed, changing version and timestamps."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim the retry key, save request fingerprint and response, or replace an expired record. Matching unexpired retries reuse the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Claim retry key and reject an existing running or paused session.",
+      "Validate the live Chore/Sprint, matching non-template plan, nonempty segments and optional recommendation.",
+      "Validate linked Chores and capture historical snapshots.",
+      "Create session, update target status and record both initial events atomically.",
+      "Return 201 with session ETag and Location."
+    ],
+    "notes": [
+      "Only one running or paused session is allowed per account. Terminal targets or linked Chores cannot start.",
+      "The first segment is already started: do not send another start event for it. No background timer automatically advances segments.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "execution"
+  },
+  "getActiveExecutionSession": {
+    "title": "Find your open session",
+    "what": "Returns your running or paused session under session, or session=null when none is open. A paused session still counts as active here.",
+    "why": "Lets the interface recover the correct work screen after a reload. Checking does not start, resume or finish activity.",
+    "reads": [
+      "execution_sessions",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Select owned running or paused sessions, newest first.",
+      "Return the session or null."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "execution"
+  },
+  "getExecutionSession": {
+    "title": "Read one execution session",
+    "what": "Returns current state, segment index, server timestamps and saved plan and recommendation snapshots. Includes the session ETag.",
+    "why": "Lets the client reconstruct authoritative state and send safe subsequent actions. Countdown displays can use server timestamps without writing every tick.",
+    "reads": [
+      "execution_sessions",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the session within your account.",
+      "Return 404 if unavailable.",
+      "Return the session and current ETag."
+    ],
+    "notes": [
+      "Does not automatically complete elapsed segments or update session timestamps.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "execution"
+  },
+  "listExecutionSessionEvents": {
+    "title": "Read a session timeline",
+    "what": "Returns recorded events for your session in ascending server-time order. Events retain type, optional segment index, client timestamp and payload.",
+    "why": "Explains session progress and exposes the factual timeline used by analytics. A cursor supports long histories without replaying their effects.",
+    "reads": [
+      "execution_sessions",
+      "session_events",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Verify that the session belongs to you.",
+      "Apply any ascending occurrence-time/ID cursor and page limit.",
+      "Return events and next-page information."
+    ],
+    "notes": [
+      "Page size defaults to 25 and must be 1 to 100. occurredAt is server time; clientOccurredAt is separate metadata.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "execution"
+  },
+  "appendExecutionSessionEvent": {
+    "title": "Record a session action",
+    "what": "Immediately records an action and updates session state, timing or segment position atomically. Supported actions include pause, resume, segment/break changes, work completion, session completion and abandonment.",
+    "why": "Keeps the timeline and current state consistent across devices. Retry keys prevent duplicate button presses, while If-Match protects against stale state.",
+    "reads": [
+      "users",
+      "execution_sessions",
+      "session_events",
+      "work_items",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "session_events",
+        "action": "insert",
+        "detail": "Save a new valid event with retry key, request hash, server time, optional client time and resulting session snapshot."
+      },
+      {
+        "table": "execution_sessions",
+        "action": "update",
+        "detail": "Apply the transition and timing change, increase version and update modification time."
+      },
+      {
+        "table": "work_items",
+        "action": "update",
+        "detail": "Only work_item_completed may mark the allowed target Chore completed and update its timestamps and version."
+      }
+    ],
+    "steps": [
+      "Lock account and session and look up the event retry key.",
+      "Return a matching stored event and its original result, or reject changed content under the same key.",
+      "For a new action check If-Match, reject terminal sessions and validate state and current segment.",
+      "Apply the transition and permitted Chore completion and insert the event.",
+      "Return 201 with event, resulting session and session ETag."
+    ],
+    "notes": [
+      "work_item_completed chooses payload.workItemId if supplied, otherwise the current segment linked Chore if present, otherwise the session target. It validates that choice against session scope before writing.",
+      "Use paused/resumed for pause state; segment_started/segment_completed/segment_skipped for non-break segment progress; break_started/break_ended for breaks; work_item_completed for an allowed Chore; session_completed/session_abandoned to end. session_started is automatic and rejected here. Segment/break actions require segmentIndex matching the current index; other actions must omit it.",
+      "Idempotency-Key must be 8 to 200 characters. Deduplication is stored in session_events, not idempotency_records. Matching replay is checked before If-Match, including after the session has advanced.",
+      "Server time controls transitions; clientOccurredAt is metadata. Only optional segments may be skipped.",
+      "Completing or abandoning a session does not automatically complete work. A Chore session can complete only its own Chore; a Sprint session can complete only a direct child Chore.",
+      "Finishing a segment selects the next index but does not start the next segment automatically. Terminal sessions reject new events.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change. A matching stored retry can return before the version check.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/execution/schemas.py"
+    ],
+    "group": "execution"
+  },
+  "getExecutionSessionReview": {
+    "title": "Read a session reflection",
+    "what": "Returns saved focus, fatigue, difficulty and satisfaction scores and optional note for your session. Returns 404 if no review exists.",
+    "why": "Lets you revisit your subjective experience alongside measured activity. Reading does not create an empty review.",
+    "reads": [
+      "execution_sessions",
+      "session_reviews",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Verify session ownership.",
+      "Find its owned review.",
+      "Return scores, note, timestamps, version and review ETag."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "execution"
+  },
+  "upsertExecutionSessionReview": {
+    "title": "Save or replace a session reflection",
+    "what": "Immediately creates or replaces the single review for a completed or abandoned session. Saves supplied scores and a trimmed note.",
+    "why": "Adds your experience to the activity timeline and potential evidence for future focus patterns. Running or paused sessions must end before review.",
+    "reads": [
+      "users",
+      "execution_sessions",
+      "session_reviews",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "session_reviews",
+        "action": "insert/update",
+        "detail": "Create at version 1 or replace existing scores/note and increase version and modification time."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim the retry key, save request fingerprint and response, or replace an expired record. Matching unexpired retries reuse the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Lock account and owned session and require completed or abandoned state.",
+      "Claim the retry key and reuse a matching result if available.",
+      "Create or replace the review and store the retry response.",
+      "Return 200 with review and ETag."
+    ],
+    "notes": [
+      "Scores are optional integers from 1 to 5; omitted scores and note become null under this replacement request. The note is at most 4000 characters.",
+      "This PUT replaces fields with validated request values rather than applying a partial patch. It requires Idempotency-Key, not If-Match, despite returning a review ETag.",
+      "A review does not rewrite old recommendations.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/execution_views.py",
+      "src/taskiller/django_api/execution_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/execution/schemas.py"
+    ],
+    "group": "execution"
+  },
+  "downloadDataExport": {
+    "title": "Download a prepared data archive",
+    "what": "Returns stored gzip bytes after checking a signed URL token and both token and archive expiry. Uses the URL token rather than bearer authentication.",
+    "why": "Makes a prepared archive downloadable without putting a bearer access token into a link. The signature is bound to that export and owner and limited in time.",
+    "reads": [
+      "data_export_requests"
+    ],
+    "writes": [],
+    "steps": [
+      "Require a sufficiently long token and locate the export.",
+      "Check ready status, stored bytes, archive expiry and signed token.",
+      "Return application/gzip attachment bytes, digest and private no-store caching."
+    ],
+    "notes": [
+      "Invalid, missing or expired downloads return 404. Downloads do not mark an archive used, extend its life or write audit events.",
+      "Stored bytes are cleared by later expiry cleanup. Keep the signed download URL private.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/privacy_service.py",
+      "src/taskiller/operations/tokens.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "privacy"
+  },
+  "createFocusPlanRecommendation": {
+    "title": "Suggest a focus schedule",
+    "what": "Immediately generates and stores an explained sequence of focus and break segments for a Chore or Sprint. Saves inputs, engine version, reasons and proposed plan as a recommendation snapshot.",
+    "why": "Helps choose a practical schedule from work characteristics, effort, available time and preferences. Sufficient Chore history can inform block length, with stored reasons explaining the suggestion.",
+    "reads": [
+      "users",
+      "work_items",
+      "work_types",
+      "user_preferences",
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "focus_plan_recommendations",
+        "action": "insert",
+        "detail": "Save the input and proposed-plan snapshots, reasons, strategy, provenance and engine version."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim the retry key, save request fingerprint and response, or replace an expired record. Matching unexpired retries reuse the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Claim the retry key and lock the live target; reject Projects and terminal work.",
+      "Read preferences and usable characteristics; for a Sprint gather estimated nonterminal child Chores.",
+      "For a typed Chore, consult analytics for an eligible personal pattern, then generate the plan and reasons.",
+      "Store the recommendation and retry result and return 201."
+    ],
+    "notes": [
+      "Available time, when supplied, must be 300 to 43200 seconds. Personalization looks back 90 days and rounds eligible median block lengths to five minutes, bounded to 15 through 90 minutes.",
+      "History tables are conditional reads when a typed Chore is considered for personalization. Insufficient evidence falls back to preference or bootstrap behavior.",
+      "A Chore needs usable characteristics and an effort estimate or available time. A Sprint needs an eligible estimated child Chore.",
+      "This creates a recommendation, not a focus_plans row. It does not start work or queue a job.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/focus/engine.py",
+      "src/taskiller/analytics/service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "focus"
+  },
+  "getFocusPlanRecommendation": {
+    "title": "Read a saved focus suggestion",
+    "what": "Returns your stored recommendation with proposed plan, reasons, provenance and engine version. Does not recalculate it from current work.",
+    "why": "Lets you inspect why a schedule was suggested before saving a runnable plan. The snapshot remains stable after preferences or work details change.",
+    "reads": [
+      "focus_plan_recommendations",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the recommendation by ID and owner.",
+      "Return 404 if unavailable.",
+      "Return the stored plan and explanation."
+    ],
+    "notes": [
+      "No new recommendation or runnable plan is created.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "focus"
+  },
+  "listFocusPlans": {
+    "title": "Browse saved focus plans",
+    "what": "Returns a page of your nondeleted plans with their ordered segments, newest first. Can filter to one work item or templates only.",
+    "why": "Lets you reuse a saved schedule without requesting another recommendation. Pagination keeps long collections manageable.",
+    "reads": [
+      "focus_plans",
+      "focus_plan_segments",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate page size, cursor and optional work-item/template filters.",
+      "Select owned nondeleted plans in descending creation order.",
+      "Load ordered segments and return items and next-page information."
+    ],
+    "notes": [
+      "Page size defaults to 25 and must be 1 to 100. templateOnly=false includes ordinary plans and templates.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "focus"
+  },
+  "createFocusPlan": {
+    "title": "Save a focus plan",
+    "what": "Immediately saves a named plan and ordered segment rows, optionally tied to a Chore or Sprint and recommendation. Can also save a reusable template.",
+    "why": "Turns a chosen or manually written schedule into a saved plan. Referencing a recommendation records its origin, while the request still supplies the segments to save.",
+    "reads": [
+      "users",
+      "work_items",
+      "focus_plan_recommendations",
+      "focus_plan_segments",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "focus_plans",
+        "action": "insert",
+        "detail": "Create a named owned plan with source, template flag and optional work/recommendation references."
+      },
+      {
+        "table": "focus_plan_segments",
+        "action": "insert",
+        "detail": "Create ordered supplied segments and valid optional linked Chore references."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim the retry key, save request fingerprint and response, or replace an expired record. Matching unexpired retries reuse the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Validate input and claim the retry key under the account lock.",
+      "Resolve the recommendation if supplied, infer its work target if omitted, and reject mismatches.",
+      "Validate Chore/Sprint target and segment links.",
+      "Save plan and segments, save retry result and return 201 with Location and ETag."
+    ],
+    "notes": [
+      "Supply source=manual, recommendation or template consistently: recommendation source requires recommendationId; template source requires template=true, no work target and no linked item segments. Supply 1 to 100 segments.",
+      "Projects cannot be plan targets. Generic plans cannot contain linked work-item segments.",
+      "Templates cannot execute directly; starting work requires a non-template plan bound to the selected work item.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py",
+      "src/taskiller/focus/schemas.py"
+    ],
+    "group": "focus"
+  },
+  "deleteFocusPlan": {
+    "title": "Hide a focus plan by soft deletion",
+    "what": "Immediately marks a plan deleted and increases its version. Retains its row and ordered segment rows.",
+    "why": "Removes an unwanted schedule from normal browsing and prevents new sessions from using that deleted plan. Recorded sessions retain their own snapshots.",
+    "reads": [
+      "users",
+      "focus_plans",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "focus_plans",
+        "action": "soft delete",
+        "detail": "Set deleted_at and updated_at and increase version; retain segment rows and history."
+      }
+    ],
+    "steps": [
+      "Lock account and live plan.",
+      "Check If-Match against the plan ETag.",
+      "Set deletion time and return 204."
+    ],
+    "notes": [
+      "Does not hard-delete segments or cancel a running session.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "focus"
+  },
+  "getFocusPlan": {
+    "title": "Read one saved focus plan",
+    "what": "Returns one of your nondeleted plans and its ordered segments. Includes the current plan ETag.",
+    "why": "Lets you inspect the saved schedule and prepare a protected edit. The editable plan is separate from its original recommendation and any execution snapshot.",
+    "reads": [
+      "focus_plans",
+      "focus_plan_segments",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the owned nondeleted plan.",
+      "Load segments in segment-index order.",
+      "Return plan and ETag."
+    ],
+    "notes": [
+      "Missing, foreign-owned or deleted plans return 404.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "focus"
+  },
+  "updateFocusPlan": {
+    "title": "Edit a saved focus plan",
+    "what": "Immediately changes a plan name or replaces its supplied segment list after checking its ETag. Existing session snapshots retain their original schedules.",
+    "why": "Lets you adapt a future schedule without rewriting recorded activity. Validates segment links against the saved target.",
+    "reads": [
+      "users",
+      "focus_plans",
+      "focus_plan_segments",
+      "work_items",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "focus_plan_segments",
+        "action": "hard delete/insert",
+        "detail": "When segments are supplied, physically remove old segment rows and insert the complete replacement list atomically."
+      },
+      {
+        "table": "focus_plans",
+        "action": "update",
+        "detail": "For a changed name or supplied segment replacement, increase version and update time and save the name."
+      }
+    ],
+    "steps": [
+      "Lock account and plan and compare If-Match.",
+      "Check template/source restrictions and validate any replacement segment links.",
+      "Replace supplied segments and save the changed plan version.",
+      "Return plan and ETag."
+    ],
+    "notes": [
+      "Work-item and recommendation bindings are not changed here. Template-source plans cannot be converted in place to ordinary plans.",
+      "Replacing segments hard-deletes segment rows; it does not soft-delete the plan or alter existing execution snapshots.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/focus_views.py",
+      "src/taskiller/django_api/focus_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "focus"
+  },
+  "requestAccountDeletion": {
+    "title": "Schedule permanent account removal",
+    "what": "Immediately disables your account, revokes its open device sessions and schedules deletion after the configured grace period. Returns 202; permanent data removal happens later in the worker.",
+    "why": "Provides erasure while blocking further access immediately. Makes the difference between scheduled removal and completed permanent deletion visible.",
+    "reads": [
+      "users",
+      "account_deletion_requests",
+      "auth_sessions",
+      "rate_limit_buckets",
+      "outbox_jobs",
+      "session_events",
+      "session_reviews",
+      "execution_sessions",
+      "focus_plan_segments",
+      "focus_plans",
+      "focus_plan_recommendations",
+      "work_items",
+      "work_types",
+      "refresh_tokens",
+      "email_verification_tokens",
+      "password_reset_tokens",
+      "user_preferences",
+      "data_export_requests",
+      "idempotency_records"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for account deletion, two attempts per hour per IP-plus-account subject, reset elapsed windows and count the attempt. May persist even when the main request is rejected; normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "account_deletion_requests",
+        "action": "insert/update",
+        "detail": "Immediately create a scheduled request and execute_after. Later record processing/completed or terminal failure; retain a completion tombstone until retention cleanup."
+      },
+      {
+        "table": "users",
+        "action": "update",
+        "detail": "Immediately set is_active=false, increase version and update modification time."
+      },
+      {
+        "table": "auth_sessions",
+        "action": "update",
+        "detail": "Immediately revoke unrevoked sessions with account_deletion_scheduled reason. Scheduling itself does not update refresh-token rows."
+      },
+      {
+        "table": "outbox_jobs",
+        "action": "insert/update",
+        "detail": "Immediately queue account_delete for execute_after; later the worker claims, retries and acknowledges it."
+      },
+      {
+        "table": "security_events",
+        "action": "insert",
+        "detail": "After success attempt to record account_deletion_scheduled with hashed network subject and limited request metadata. Audit persistence is best effort."
+      },
+      {
+        "table": "session_events",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "session_reviews",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "execution_sessions",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "focus_plan_segments",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "focus_plans",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "focus_plan_recommendations",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "work_items",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "work_types",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order. Shared system work types are retained."
+      },
+      {
+        "table": "refresh_tokens",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "auth_sessions",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "email_verification_tokens",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "password_reset_tokens",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "user_preferences",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "data_export_requests",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      },
+      {
+        "table": "users",
+        "action": "hard delete",
+        "detail": "Later, after execute_after, the worker physically deletes this account's rows in dependency order."
+      }
+    ],
+    "steps": [
+      "Count the attempt and check If-Match against the locked account profile.",
+      "Create the scheduled request, revoke sessions, disable account and queue the delayed job atomically.",
+      "Attempt the audit event and return request ID, status and executeAfter with Clear-Site-Data for cookies and storage.",
+      "After the grace period, the worker explicitly hard-deletes dependent data and the user and marks the request completed."
+    ],
+    "notes": [
+      "Immediate reads concern account, deletion request, sessions and counters; dependency-table reads/deletes occur later in the worker.",
+      "This route offers no cancellation operation. The inactive account and revoked sessions prevent normal access during the grace period.",
+      "Refresh-token rows are not immediately updated but cannot grant access through revoked sessions; the worker later deletes them.",
+      "Security-event history remains until separate retention cleanup. Completed deletion tombstones and outbox history also have their own retention periods.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/privacy_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "privacy"
+  },
+  "getMe": {
+    "title": "Read your account profile",
+    "what": "Returns your account identity, display name and verification information. Includes a version tag called an ETag.",
+    "why": "Lets the interface show who is signed in and obtain the profile version before protected changes. The password hash is never included.",
+    "reads": [
+      "users",
+      "auth_sessions"
+    ],
+    "writes": [],
+    "steps": [
+      "Use the account loaded during authentication.",
+      "Serialize its public profile fields.",
+      "Return the profile and ETag."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "updateMe": {
+    "title": "Change your display name",
+    "what": "Immediately updates your supplied display name. Requires the latest profile ETag to guard against overwriting a newer edit.",
+    "why": "Personalizes the name shown by the product. This route does not change email or password.",
+    "reads": [
+      "users",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "users",
+        "action": "update",
+        "detail": "When display_name is supplied, save it, increase version and update modification time."
+      }
+    ],
+    "steps": [
+      "Validate the partial profile body.",
+      "Lock the account and compare If-Match with its current ETag.",
+      "Save the supplied name and return the profile and resulting ETag."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/user_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "requestDataExport": {
+    "title": "Queue a copy of your account data",
+    "what": "Immediately records an export request and queues a worker job, returning 202. The compressed archive is built later rather than inside this request.",
+    "why": "Lets you obtain a copy of preferences, work, plans and recorded activity without holding the HTTP request open. The archive excludes authentication secrets.",
+    "reads": [
+      "users",
+      "idempotency_records",
+      "data_export_requests",
+      "rate_limit_buckets",
+      "user_preferences",
+      "work_types",
+      "work_items",
+      "focus_plan_recommendations",
+      "focus_plans",
+      "focus_plan_segments",
+      "execution_sessions",
+      "session_events",
+      "session_reviews",
+      "outbox_jobs",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "rate_limit_buckets",
+        "action": "insert/update",
+        "detail": "Immediately create or lock counters for the account-plus-IP export limit, reset elapsed windows and count the attempt. May persist even when the main request is rejected; normally bypassed in tests unless rate-limit test mode is enabled."
+      },
+      {
+        "table": "data_export_requests",
+        "action": "insert/update",
+        "detail": "Immediately create a queued request. Later the worker stores processing/ready timestamps, gzip bytes, digest, size and expiry, or a terminal failure."
+      },
+      {
+        "table": "outbox_jobs",
+        "action": "insert/update",
+        "detail": "Immediately enqueue data_export; later the worker claims, retries as necessary and acknowledges it."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim the retry key and save the export request ID and response; matching unexpired retries reuse the request."
+      },
+      {
+        "table": "security_events",
+        "action": "insert",
+        "detail": "After success attempt to record data_export_requested with hashed network subject and limited request metadata. Audit persistence is best effort."
+      }
+    ],
+    "steps": [
+      "Require the retry key and count the export request.",
+      "Lock the account and reuse a matching request or create request and queued job atomically.",
+      "Attempt the audit event and return 202 with status metadata.",
+      "Later the worker reads a consistent repeatable-read snapshot, gzip-compresses it and saves bytes and expiry.",
+      "Poll getDataExportRequest until ready, then use its signed download URL."
+    ],
+    "notes": [
+      "Immediate reads are account, retry, export and counter state; domain history and worker-job reads occur in the later worker phase.",
+      "Matching retries reuse the export request but still reach rate-limit and best-effort audit steps. Exhausted worker retries mark the request failed.",
+      "The archive format is taskiller-data-export-v1, not the portable import format. It includes all owned work rows, including soft-deleted rows, and available system work types.",
+      "Password hashes, refresh and email/reset tokens, counters and internal outbox jobs are excluded. A 202 is not a completed download.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/privacy_service.py",
+      "src/taskiller/django_operations/worker_service.py",
+      "src/taskiller/django_api/security.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "privacy"
+  },
+  "getDataExportRequest": {
+    "title": "Check an export request",
+    "what": "Returns your export status, timings, expiry, size, digest and failure code. Includes a signed download URL only when ready and unexpired.",
+    "why": "Lets the interface wait for asynchronous work and discover a usable download. Signing a URL does not store or consume a token.",
+    "reads": [
+      "data_export_requests",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the export by ID and your account ID.",
+      "Return 404 if unavailable.",
+      "Generate a time-limited URL when eligible and return current metadata."
+    ],
+    "notes": [
+      "Polling does not run the worker, renew archive expiry or update the export row.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/privacy_service.py",
+      "src/taskiller/operations/tokens.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "privacy"
+  },
+  "getPreferences": {
+    "title": "Read your personal settings",
+    "what": "Returns timezone, locale, week start, focus strategy, preferred work-block range and review-prompt choices. Includes the preference ETag.",
+    "why": "Lets settings screens and planning tools use your saved choices. Reading does not create a missing preference row.",
+    "reads": [
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the preferences belonging to your account.",
+      "Serialize the stored values.",
+      "Return settings and their ETag."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "updatePreferences": {
+    "title": "Change your personal settings",
+    "what": "Immediately saves only the preference fields you supply. Validates timezone and the combined preferred minimum/maximum work-block range.",
+    "why": "Aligns future planning and calendar displays with your choices. Existing sessions and saved recommendation snapshots remain historical.",
+    "reads": [
+      "user_preferences",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [
+      {
+        "table": "user_preferences",
+        "action": "update",
+        "detail": "For a nonempty valid patch, save supplied settings, increase version and update modification time."
+      }
+    ],
+    "steps": [
+      "Validate the partial settings body.",
+      "Lock preferences and check If-Match.",
+      "Validate timezone and the resulting old/new block range.",
+      "Save the patch and return settings and ETag."
+    ],
+    "notes": [
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/views.py",
+      "src/taskiller/django_api/user_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "auth"
+  },
+  "importPortableWork": {
+    "title": "Import a portable work document",
+    "what": "Immediately imports a portable v1 work outline as new draft items with new IDs. Reuses available work-type slugs and creates missing referenced types from supplied definitions.",
+    "why": "Brings reusable work structure into your account without copying execution history. The whole import is atomic, so a rejected item leaves no partial imported tree.",
+    "reads": [
+      "users",
+      "work_types",
+      "work_items",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_types",
+        "action": "insert",
+        "detail": "Create missing referenced types only when valid definitions are supplied."
+      },
+      {
+        "table": "work_items",
+        "action": "insert",
+        "detail": "Create new draft items parent-first with new IDs, normal append positions, dates and overrides."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Save whole-import and derived per-item/per-type retry records in the same transaction."
+      }
+    ],
+    "steps": [
+      "Validate format, limits, unique source IDs, parent references and cycles.",
+      "Lock account and claim the whole-document retry key.",
+      "Resolve type slugs and create missing referenced types.",
+      "Create items parent-first through the work service.",
+      "Return 201 with created count, source-to-new-ID map and atomic=true."
+    ],
+    "notes": [
+      "The format is taskiller.portable.work.v1, distinct from the full privacy archive. At most 1500 items and 1500 type definitions are accepted.",
+      "Every imported item becomes draft. Supplied numeric position is not restored; creation order controls sibling append order.",
+      "Existing types are reused by slug, not overwritten. Sessions, reviews and focus plans are not imported.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/portable_views.py",
+      "src/taskiller/django_api/portable_import.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "getProjectNextAction": {
+    "title": "Find a Project next action",
+    "what": "Walks a live Project tree in saved order and returns an eligible Chore, or an eligible Sprint when its visited children yield no eligible Chore. Returns null when none is available.",
+    "why": "Converts a broad Project into work that can receive a focus plan or execution session. Follows sibling order rather than inventing a priority score.",
+    "reads": [
+      "work_items",
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Require a live owned Project.",
+      "Return null for a completed, cancelled or archived Project.",
+      "Walk ordered children, skip terminal branches, prefer ready or in-progress Chores inside each visited Sprint before that Sprint itself.",
+      "Return the chosen item or null."
+    ],
+    "notes": [
+      "Draft items are not returned as actions. This does not change status or start work.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "listWorkItems": {
+    "title": "Browse your work",
+    "what": "Returns a newest-first page of your Projects, Sprints and Chores. Supports kind, status and parent filters and an explicit option to include soft-deleted rows.",
+    "why": "Supports inbox and project screens without loading all work at once. Includes effective characteristics and a cursor for the next page.",
+    "reads": [
+      "work_items",
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Validate filters and page size: default 25, allowed 1 to 100.",
+      "Filter owned rows, normally excluding deleted_at entries, and apply the cursor.",
+      "Load referenced work types and return items and next-page information."
+    ],
+    "notes": [
+      "parentId filters direct children; omitting it does not mean root-only. includeDeleted shows retained rows without restoring them.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "createWorkItem": {
+    "title": "Capture a Project, Sprint or Chore",
+    "what": "Immediately creates one work item with kind, status, dates and optional category. Places it at the end of its sibling group.",
+    "why": "Turns an idea into structured work. Projects are roots, Sprints belong to Projects, and Chores can be in the inbox or under a Project or Sprint.",
+    "reads": [
+      "users",
+      "work_items",
+      "work_types",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_items",
+        "action": "insert",
+        "detail": "Create an owned item with initial position, version, optional characteristic overrides and appropriate status timestamps."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim a retry key, save the request fingerprint and response, or replace an expired record. A matching unexpired retry returns the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Validate input and claim the retry key under the account lock.",
+      "Check hierarchy, parent ownership, type visibility and date ranges.",
+      "Assign an end position and insert the item.",
+      "Store the retry result and return 201 with Location and ETag."
+    ],
+    "notes": [
+      "Only Projects accept targetStartDate and targetEndDate. Creating work does not start execution.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "deleteWorkItem": {
+    "title": "Hide a work item by soft deletion",
+    "what": "Immediately sets deleted_at on a live item with no live children. Keeps its row and historical relationships.",
+    "why": "Removes unwanted work from normal views while retaining recorded activity. Requiring children to be moved or deleted first protects the work hierarchy.",
+    "reads": [
+      "users",
+      "work_items",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_items",
+        "action": "soft delete",
+        "detail": "Set deleted_at and updated_at and increase version on this row; do not hard-delete descendants or history."
+      }
+    ],
+    "steps": [
+      "Lock account and item and check If-Match.",
+      "Reject with 409 if live direct children remain.",
+      "Set the deletion timestamp and return 204."
+    ],
+    "notes": [
+      "Deleting a Project does not cascade through its tree. includeDeleted can still reveal retained rows.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "getWorkItem": {
+    "title": "Read one work item",
+    "what": "Returns a live owned item and its effective characteristics from its type and overrides. Includes an ETag for later edits.",
+    "why": "Provides current work details and status for a Project, Sprint or Chore. The version prevents one device from silently overwriting a newer change.",
+    "reads": [
+      "work_items",
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the owned item with no deletion timestamp.",
+      "Read its work type if present and combine characteristics.",
+      "Return the item and ETag."
+    ],
+    "notes": [
+      "Soft-deleted items return 404 here; listWorkItems can explicitly include them.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "updateWorkItem": {
+    "title": "Edit or move a work item",
+    "what": "Immediately updates supplied details, status, category, overrides or parent. Moving to a different parent appends it to that sibling group.",
+    "why": "Supports refining and organizing captured work as it progresses. Validates state transitions, hierarchy and dates together to prevent inconsistent work.",
+    "reads": [
+      "users",
+      "work_items",
+      "work_types",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_items",
+        "action": "update",
+        "detail": "Save changed fields, any new parent and position, status timestamps and overrides; increase version and update time when values change."
+      }
+    ],
+    "steps": [
+      "Validate the patch and lock account and live item.",
+      "Check If-Match and validate any changed parent or category.",
+      "Apply allowed status transitions and validate resulting dates.",
+      "Save changes and return the item and ETag."
+    ],
+    "notes": [
+      "Kind is not changed by this patch. Completing work does not automatically complete an execution session.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "listWorkItemChildren": {
+    "title": "See immediate child work",
+    "what": "Returns live direct children of a live owned item, ordered by position and ID. Includes effective work characteristics.",
+    "why": "Lets a Project or Sprint screen show its next level of work. Does not expand all descendants.",
+    "reads": [
+      "work_items",
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Verify that the parent is live and owned.",
+      "Select live direct children in sibling order.",
+      "Load types and return the child list."
+    ],
+    "notes": [
+      "A Chore normally has no children. Missing or deleted parents return 404.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "reorderWorkItem": {
+    "title": "Move work within its sibling order",
+    "what": "Immediately places an item before or after a live sibling, or at the end if no anchor is supplied. Keeps its parent unchanged.",
+    "why": "Lets you choose the sequence shown in lists and considered by the Project next-action search. Numeric positions persist that order.",
+    "reads": [
+      "users",
+      "work_items",
+      "work_types",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_items",
+        "action": "update",
+        "detail": "Change the moved item position and version. If no numeric gap remains, rebalance sibling positions and update versions and times for changed siblings."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim a retry key, save the request fingerprint and response, or replace an expired record. A matching unexpired retry returns the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Claim the retry key, lock the item and check If-Match.",
+      "Lock siblings and validate that any anchor is another live sibling.",
+      "Choose a numeric gap or rebalance siblings.",
+      "Save the retry result and return the item and ETag."
+    ],
+    "notes": [
+      "Use updateWorkItem to change parent. This route requires both Idempotency-Key and If-Match.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change. A matching stored retry can return before the version check.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "getWorkItemTree": {
+    "title": "Read a work hierarchy",
+    "what": "Returns a live item with nested live children. For a Project, includes its direct Chores and Sprints and the Sprints' Chores.",
+    "why": "Provides the supported subtree for outlining work in one response. Preserves sibling order and the actual Project/Sprint/Chore hierarchy.",
+    "reads": [
+      "work_items",
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Verify the owned live root.",
+      "Load direct children and, for a Project, Sprint children.",
+      "Load types, sort siblings and assemble nested children."
+    ],
+    "notes": [
+      "Deleted descendants are omitted. Reading the tree does not change positions.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "listWorkTypes": {
+    "title": "Browse available work types",
+    "what": "Lists built-in types and your own custom types with their work characteristics. Built-in definitions appear first, followed by display-name and ID order.",
+    "why": "Lets you choose how to describe the demands of work. Characteristics such as cognitive demand and interruption sensitivity feed focus recommendations.",
+    "reads": [
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Select built-in and your own type rows.",
+      "Sort system types first, then by name and ID.",
+      "Return the available definitions."
+    ],
+    "notes": [
+      "Other people's custom definitions are excluded.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "createWorkType": {
+    "title": "Create a custom work type",
+    "what": "Immediately saves a personal work category with slug, name, description and complete characteristics. Returns its location and ETag.",
+    "why": "Lets you describe work that built-in categories do not capture. Your work items can then reference this owned category.",
+    "reads": [
+      "users",
+      "work_types",
+      "idempotency_records",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_types",
+        "action": "insert",
+        "detail": "Create a non-system type owned by your account at version 1."
+      },
+      {
+        "table": "idempotency_records",
+        "action": "insert/update",
+        "detail": "Immediately claim a retry key, save the request fingerprint and response, or replace an expired record. A matching unexpired retry returns the saved result without repeating the main change."
+      }
+    ],
+    "steps": [
+      "Validate input and retry key and lock the account.",
+      "Claim the key and check custom-slug uniqueness.",
+      "Insert the type, store its retry result and return 201 with Location and ETag."
+    ],
+    "notes": [
+      "Custom slugs are unique within an owner regardless of case; built-in slugs use a separate namespace.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Idempotency-Key is required and must be 8 to 200 characters. Within its stored lifetime and operation scope, identical retries reuse the result; different content under the same key returns 409. Expired keys can be reused for a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_api/idempotency.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "deleteWorkType": {
+    "title": "Remove a custom work type",
+    "what": "Immediately clears the category from every referencing work item, then physically deletes the custom type row. Includes references on soft-deleted items.",
+    "why": "Retires a category without deleting the work it labeled. Referencing item versions change so clients can detect the cleared category.",
+    "reads": [
+      "users",
+      "work_types",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_items",
+        "action": "update",
+        "detail": "Clear work_type_id on every referencing row, including soft-deleted ones; increase versions and update times."
+      },
+      {
+        "table": "work_types",
+        "action": "hard delete",
+        "detail": "Physically remove the custom category after clearing its item references."
+      }
+    ],
+    "steps": [
+      "Lock the account and type.",
+      "Reject built-in types and check If-Match.",
+      "Clear references and delete the type atomically; return 204."
+    ],
+    "notes": [
+      "This is hard deletion, unlike deleting a work item. Historical JSON snapshots remain unchanged.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "getWorkType": {
+    "title": "Read one work type",
+    "what": "Returns the definition and characteristics of a built-in or owned custom type. Includes its current ETag.",
+    "why": "Explains the category used by work items. Supplies the version needed to edit or remove a custom type safely.",
+    "reads": [
+      "work_types",
+      "auth_sessions",
+      "users"
+    ],
+    "writes": [],
+    "steps": [
+      "Find the ID among built-in and your own types.",
+      "Return 404 if unavailable.",
+      "Return the definition and ETag."
+    ],
+    "notes": [
+      "Built-in types are readable but immutable.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "updateWorkType": {
+    "title": "Edit a custom work type",
+    "what": "Immediately changes supplied name, description or characteristics of a custom category. Leaves its slug unchanged.",
+    "why": "Lets category details and future recommendation inputs evolve with your work. Recorded session snapshots are not rewritten.",
+    "reads": [
+      "users",
+      "work_types",
+      "auth_sessions"
+    ],
+    "writes": [
+      {
+        "table": "work_types",
+        "action": "update",
+        "detail": "Save changed name, description or characteristics and increase version and update time only when values change."
+      }
+    ],
+    "steps": [
+      "Validate the patch and lock account and type.",
+      "Reject built-in types and compare If-Match.",
+      "Save changed fields and return the type and ETag."
+    ],
+    "notes": [
+      "Built-in changes return 403.",
+      "Common authentication: a Bearer access token is checked against auth_sessions and users, rejecting expired or revoked sessions and inactive accounts. These shared reads are included above; authentication does not update last_used_at.",
+      "Send the latest resource ETag in If-Match. A missing or stale value returns 412 and the current ETag; read again before sending a new change.",
+      "Write entries describe possible conditional effects and explicitly labeled later worker effects. Rejected input or an identical retry may perform fewer changes."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_api/work_views.py",
+      "src/taskiller/django_api/work_service.py",
+      "src/taskiller/django_api/authentication.py",
+      "src/taskiller/django_domain/models.py"
+    ],
+    "group": "work"
+  },
+  "healthLive": {
+    "title": "Check whether the web process responds",
+    "what": "Returns status=ok when the web process can answer. Does not query the application database.",
+    "why": "Lets a monitor detect an unreachable or stopped process. A live response alone does not prove database readiness or worker health.",
+    "reads": [],
+    "writes": [],
+    "steps": [
+      "Accept a GET request.",
+      "Return status=ok with no-store caching."
+    ],
+    "notes": [
+      "Public and read-only; no jobs, audit events or counter updates.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_project/health.py"
+    ],
+    "group": "health"
+  },
+  "healthReady": {
+    "title": "Check database and migration readiness",
+    "what": "Checks database connectivity and whether Django migrations are up to date. Returns ready when both pass, otherwise a 503 not-ready response.",
+    "why": "Helps deployment checks decide whether the server can use its expected schema. Reports migration state without applying migrations.",
+    "reads": [
+      "django_migrations"
+    ],
+    "writes": [],
+    "steps": [
+      "Run SELECT 1 to test database connectivity.",
+      "Read migration history and compare it with migration-file graph targets.",
+      "Return database/migration status and expected/current revisions, or 503 for unavailable or outdated state."
+    ],
+    "notes": [
+      "SELECT 1 reads no application table; django_migrations is Django framework migration history.",
+      "Public and read-only: does not create migration history, apply migrations, start the worker or verify email delivery.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_project/health.py"
+    ],
+    "group": "health"
+  },
+  "healthVersion": {
+    "title": "Read the running release identity",
+    "what": "Returns package version and configured release SHA, branch and repository metadata. Does not read application data.",
+    "why": "Identifies which release a responding server runs during deployment investigation. Version metadata does not establish database or worker readiness.",
+    "reads": [],
+    "writes": [],
+    "steps": [
+      "Read installed package version and runtime build metadata.",
+      "Return the metadata with no-store caching."
+    ],
+    "notes": [
+      "Public and read-only; no counters, audit events or application-row updates.",
+      "No database writes are performed by this operation."
+    ],
+    "source": [
+      "openapi/current.json",
+      "src/taskiller/django_project/health.py",
+      "src/taskiller/core/runtime.py"
+    ],
+    "group": "health"
+  }
+}

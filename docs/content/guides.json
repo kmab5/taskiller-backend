@@ -1,0 +1,948 @@
+{
+  "journey": [
+    {
+      "id": "create-chore",
+      "title": "Capture a small piece of work",
+      "eyebrow": "Step 1 · Synthetic example",
+      "explanation": "All seven steps are invented illustrations, not live requests. IDs, dates and keys are fixed for readability; authentication credentials are omitted. Assume a signed-in account with no open session. A Chore is executable work. With no parent it belongs to the inbox; explicitly choosing ready avoids the default draft status. Response bodies show selected fields, not complete API responses.",
+      "operationId": "createWorkItem",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/work-items",
+        "headers": {
+          "Idempotency-Key": "guide-chore-001",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "kind": "chore",
+          "name": "Draft a short outline",
+          "status": "ready",
+          "estimatedEffortSeconds": 1500
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"work-item:10000000-0000-4000-8000-000000000001:v1\""
+        },
+        "body": {
+          "id": "10000000-0000-4000-8000-000000000001",
+          "kind": "chore",
+          "parentId": null,
+          "name": "Draft a short outline",
+          "status": "ready",
+          "estimatedEffortSeconds": 1500,
+          "version": 1
+        }
+      },
+      "changes": [
+        {
+          "table": "work_items",
+          "action": "insert",
+          "description": "Store the caller-owned ready Chore."
+        },
+        {
+          "table": "idempotency_records",
+          "action": "insert",
+          "description": "Remember the creation request and response for replay."
+        }
+      ],
+      "takeaway": "Capture work first. An estimate is an intention, not measured work."
+    },
+    {
+      "id": "create-focus-plan",
+      "title": "Give the Chore a plan",
+      "eyebrow": "Step 2 · Synthetic example",
+      "explanation": "Save a manual, non-template Focus Plan bound to the Chore from step 1. Its single fixed work segment targets 1,500 seconds, or 25 minutes. This describes intended work; it has not started a timer or created execution history. The linked segment belongs to this same Chore.",
+      "operationId": "createFocusPlan",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/focus-plans",
+        "headers": {
+          "Idempotency-Key": "guide-plan-001",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "source": "manual",
+          "name": "One outline block",
+          "template": false,
+          "workItemId": "10000000-0000-4000-8000-000000000001",
+          "segments": [
+            {
+              "kind": "work",
+              "durationMode": "fixed",
+              "targetSeconds": 1500,
+              "linkedWorkItemId": "10000000-0000-4000-8000-000000000001",
+              "optional": false
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"focus-plan:20000000-0000-4000-8000-000000000001:v1\""
+        },
+        "body": {
+          "id": "20000000-0000-4000-8000-000000000001",
+          "workItemId": "10000000-0000-4000-8000-000000000001",
+          "source": "manual",
+          "template": false,
+          "version": 1
+        }
+      },
+      "changes": [
+        {
+          "table": "focus_plans",
+          "action": "insert",
+          "description": "Save the plan bound to the Chore."
+        },
+        {
+          "table": "focus_plan_segments",
+          "action": "insert",
+          "description": "Store work segment index 0 and its 25-minute target."
+        },
+        {
+          "table": "idempotency_records",
+          "action": "insert",
+          "description": "Remember the saved plan response."
+        }
+      ],
+      "takeaway": "Start sessions with a matching, non-template plan. Saving a plan alone records no work time."
+    },
+    {
+      "id": "start-session",
+      "title": "Start working",
+      "eyebrow": "Step 3 · Synthetic example",
+      "explanation": "Start the saved Chore with its plan at the illustrative server time 09:02 UTC. The server snapshots the plan and work context, creates session_started and segment_started events, and moves the Chore to in_progress. Only one running or paused session is allowed per owner.",
+      "operationId": "startExecutionSession",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/execution-sessions",
+        "headers": {
+          "Idempotency-Key": "guide-start-001",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "workItemId": "10000000-0000-4000-8000-000000000001",
+          "focusPlanId": "20000000-0000-4000-8000-000000000001"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"execution-session:30000000-0000-4000-8000-000000000001:v1\""
+        },
+        "body": {
+          "id": "30000000-0000-4000-8000-000000000001",
+          "state": "running",
+          "currentSegmentIndex": 0,
+          "sessionStartedAt": "2026-11-18T09:02:00+00:00",
+          "currentSegmentStartedAt": "2026-11-18T09:02:00.000001+00:00",
+          "pausedAt": null,
+          "endedAt": null,
+          "version": 1
+        }
+      },
+      "changes": [
+        {
+          "table": "execution_sessions",
+          "action": "insert",
+          "description": "Create the running session with plan and work-context snapshots."
+        },
+        {
+          "table": "session_events",
+          "action": "insert",
+          "description": "Append session_started and the first segment start one microsecond later."
+        },
+        {
+          "table": "work_items",
+          "action": "update",
+          "description": "Move the Chore to in_progress and advance its version."
+        },
+        {
+          "table": "idempotency_records",
+          "action": "insert",
+          "description": "Remember the start result."
+        }
+      ],
+      "takeaway": "The server owns the clock; the browser countdown displays the saved timestamps."
+    },
+    {
+      "id": "pause",
+      "title": "Pause for an interruption",
+      "eyebrow": "Step 4 · Synthetic example",
+      "explanation": "At 09:12 UTC, append paused using the session ETag from step 3. Pause is an event, not a separate endpoint. The server records pausedAt, changes the state and advances the version. The Chore and plan remain unchanged.",
+      "operationId": "appendExecutionSessionEvent",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/execution-sessions/30000000-0000-4000-8000-000000000001/events",
+        "headers": {
+          "Idempotency-Key": "guide-pause-001",
+          "If-Match": "\"execution-session:30000000-0000-4000-8000-000000000001:v1\"",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "type": "paused"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"execution-session:30000000-0000-4000-8000-000000000001:v2\""
+        },
+        "body": {
+          "event": {
+            "type": "paused",
+            "occurredAt": "2026-11-18T09:12:00+00:00"
+          },
+          "session": {
+            "id": "30000000-0000-4000-8000-000000000001",
+            "state": "paused",
+            "pausedAt": "2026-11-18T09:12:00+00:00",
+            "version": 2
+          }
+        }
+      },
+      "changes": [
+        {
+          "table": "execution_sessions",
+          "action": "update",
+          "description": "Record pausedAt and set state paused at version 2."
+        },
+        {
+          "table": "session_events",
+          "action": "insert",
+          "description": "Append the pause, retry key, request hash and resulting session snapshot."
+        }
+      ],
+      "takeaway": "Pausing keeps the session open while separating interruption time from active work."
+    },
+    {
+      "id": "resume",
+      "title": "Return to the same session",
+      "eyebrow": "Step 5 · Synthetic example",
+      "explanation": "At 09:17 UTC, append resumed using the ETag from the pause response. The server clears pausedAt and shifts currentSegmentStartedAt forward by the five-minute pause. The events preserve the actual interruption; the shifted clock prevents the display from counting it as work.",
+      "operationId": "appendExecutionSessionEvent",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/execution-sessions/30000000-0000-4000-8000-000000000001/events",
+        "headers": {
+          "Idempotency-Key": "guide-resume-001",
+          "If-Match": "\"execution-session:30000000-0000-4000-8000-000000000001:v2\"",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "type": "resumed"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"execution-session:30000000-0000-4000-8000-000000000001:v3\""
+        },
+        "body": {
+          "event": {
+            "type": "resumed",
+            "occurredAt": "2026-11-18T09:17:00+00:00"
+          },
+          "session": {
+            "id": "30000000-0000-4000-8000-000000000001",
+            "state": "running",
+            "currentSegmentStartedAt": "2026-11-18T09:07:00.000001+00:00",
+            "pausedAt": null,
+            "version": 3
+          }
+        }
+      },
+      "changes": [
+        {
+          "table": "execution_sessions",
+          "action": "update",
+          "description": "Resume, clear pausedAt and shift the active-segment clock at version 3."
+        },
+        {
+          "table": "session_events",
+          "action": "insert",
+          "description": "Append resumed and its replay snapshot."
+        }
+      ],
+      "takeaway": "Resume the existing session instead of starting another one after an interruption."
+    },
+    {
+      "id": "complete",
+      "title": "Finish this session",
+      "eyebrow": "Step 6 · Synthetic example",
+      "explanation": "At 09:32 UTC, append session_completed with the latest ETag. This ends the session and clears its segment clock. Thirty elapsed minutes minus five paused minutes gives about 25 minutes of measured work. This event does not mark the Chore complete or record segment_completed; the Chore remains in_progress.",
+      "operationId": "appendExecutionSessionEvent",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/execution-sessions/30000000-0000-4000-8000-000000000001/events",
+        "headers": {
+          "Idempotency-Key": "guide-complete-001",
+          "If-Match": "\"execution-session:30000000-0000-4000-8000-000000000001:v3\"",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "type": "session_completed"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"execution-session:30000000-0000-4000-8000-000000000001:v4\""
+        },
+        "body": {
+          "event": {
+            "type": "session_completed",
+            "occurredAt": "2026-11-18T09:32:00+00:00"
+          },
+          "session": {
+            "id": "30000000-0000-4000-8000-000000000001",
+            "state": "completed",
+            "currentSegmentStartedAt": null,
+            "pausedAt": null,
+            "endedAt": "2026-11-18T09:32:00+00:00",
+            "version": 4
+          }
+        }
+      },
+      "changes": [
+        {
+          "table": "execution_sessions",
+          "action": "update",
+          "description": "Set completed and endedAt, clear the segment clock and advance to version 4."
+        },
+        {
+          "table": "session_events",
+          "action": "insert",
+          "description": "Append session_completed and its replay snapshot."
+        }
+      ],
+      "takeaway": "Ending a session and completing a Chore are separate decisions. Use the supported work-completion flow when the Chore itself is done."
+    },
+    {
+      "id": "review",
+      "title": "Reflect on how it felt",
+      "eyebrow": "Step 7 · Synthetic example",
+      "explanation": "After completion or abandonment, save optional ratings from 1 to 5 and a note. These are personal reports, not a generated productivity grade. This PUT creates or replaces the session’s single review. It requires an idempotency key but does not require If-Match; a genuinely new revision needs a new key.",
+      "operationId": "upsertExecutionSessionReview",
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/execution-sessions/30000000-0000-4000-8000-000000000001/review",
+        "headers": {
+          "Idempotency-Key": "guide-review-001",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "focusScore": 4,
+          "fatigueScore": 2,
+          "difficultyScore": 3,
+          "satisfactionScore": 4,
+          "note": "The pause helped; the outline is drafted."
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "ETag": "\"session-review:30000000-0000-4000-8000-000000000001:v1\""
+        },
+        "body": {
+          "sessionId": "30000000-0000-4000-8000-000000000001",
+          "focusScore": 4,
+          "fatigueScore": 2,
+          "difficultyScore": 3,
+          "satisfactionScore": 4,
+          "note": "The pause helped; the outline is drafted.",
+          "createdAt": "2026-11-18T09:33:00+00:00",
+          "updatedAt": "2026-11-18T09:33:00+00:00",
+          "version": 1
+        }
+      },
+      "changes": [
+        {
+          "table": "session_reviews",
+          "action": "insert",
+          "description": "Create the review at version 1; later saves update this row."
+        },
+        {
+          "table": "idempotency_records",
+          "action": "insert",
+          "description": "Remember the review response for retries."
+        }
+      ],
+      "takeaway": "Use measured history and your own observations to adjust the next plan."
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "request-journey",
+      "title": "How a button becomes a saved record",
+      "summary": "Django receives the request, DRF checks the boundary, a service applies rules, and PostgreSQL stores the result.",
+      "explanation": "Think of the backend as a careful clerk between the browser and a shared filing cabinet. Django routes the URL and runs middleware, including request identification and browser-origin handling. Django REST Framework, or DRF, calls the view and enforces authentication requirements. Request models check submitted values before the service handles domain rules such as ownership, allowed parents and valid status changes. The service uses Django’s ORM to read and write PostgreSQL rows, often inside a transaction so related changes commit together. The view turns the result into JSON and may attach an ETag. This path applies whether a request came from a button or another permitted client. The canonical contract describes the public interface; database tables are internal storage. When troubleshooting, follow the request ID through the boundary before guessing which layer failed.",
+      "steps": [
+        "Find the operationId, method and path in openapi/current.json.",
+        "Follow the URL to its view, service and ORM model.",
+        "Inspect the returned status, body and headers before updating the screen."
+      ],
+      "example": {
+        "illustrative": true,
+        "route": [
+          "Django middleware",
+          "DRF view",
+          "DjangoWorkService",
+          "Django ORM",
+          "PostgreSQL"
+        ]
+      },
+      "relatedOperations": [
+        "createWorkItem",
+        "getWorkItem"
+      ],
+      "relatedTables": [
+        "work_items"
+      ],
+      "source": [
+        "src/taskiller/django_project/urls.py",
+        "src/taskiller/django_api/urls.py",
+        "src/taskiller/django_api/work_views.py",
+        "src/taskiller/django_api/work_service.py",
+        "src/taskiller/django_domain/models.py",
+        "openapi/current.json"
+      ]
+    },
+    {
+      "id": "authentication",
+      "title": "Stay signed in safely",
+      "summary": "A bearer access token authorizes API calls; a rotating HttpOnly cookie renews it.",
+      "explanation": "Signing in issues an access token and a refresh cookie named taskiller_refresh. Protected requests use the access token as a bearer credential; the browser sends the cookie when renewing sign-in. The cookie is HttpOnly, and Render config makes it Secure with SameSite=None for the separately hosted client. Refresh replaces the stored hashed credential. Reusing an already rotated credential revokes that device session, so coordinate refresh attempts rather than racing them. Protected requests also check that the account and authentication session remain active. Cookie-related CSRF protection uses allowed Origin checks on login, registration, refresh and logout routes, with a cross-site fetch check when Origin is absent. It is not a separate CSRF-token exchange. CORS controls which browser origins can read responses; it does not replace authentication or ownership checks. Never paste real tokens, cookies or recovery links into this guide.",
+      "steps": [
+        "Sign in using login and use the issued access credential for protected calls.",
+        "Allow credentialed refresh from the configured client origin; coordinate one refresh at a time.",
+        "Return to sign-in if refresh is rejected or reuse is detected."
+      ],
+      "example": {
+        "illustrative": true,
+        "cookieName": "taskiller_refresh",
+        "refreshOperation": "refreshAccessToken",
+        "note": "Credential values deliberately omitted; this guide makes no authentication calls."
+      },
+      "relatedOperations": [
+        "login",
+        "refreshAccessToken",
+        "logout",
+        "logoutAll",
+        "listAuthSessions",
+        "revokeAuthSession"
+      ],
+      "relatedTables": [
+        "auth_sessions",
+        "refresh_tokens",
+        "users",
+        "security_events"
+      ],
+      "source": [
+        "src/taskiller/django_api/authentication.py",
+        "src/taskiller/django_api/auth_service.py",
+        "src/taskiller/django_api/views.py",
+        "src/taskiller/django_api/middleware.py",
+        "render.yaml"
+      ]
+    },
+    {
+      "id": "version-conflicts",
+      "title": "Avoid overwriting a newer change",
+      "summary": "ETag is a version receipt; If-Match proves which resource version you edited.",
+      "explanation": "Two tabs can hold different copies of the same record. For endpoints that enforce version checks, the backend returns an ETag containing the resource kind, identifier and version. Send that exact quoted value in If-Match when submitting the supported update or session event. If the header is missing or differs from the current version, the service returns 412 precondition_failed and the current ETag. Treat this as a request to reload and reconcile, rather than blindly overwriting newer state. Successful writes advance the version, so the next action needs the next receipt. A session event returns the updated session ETag, which the walkthrough carries from pause to resume to completion. This rule is endpoint-specific: review PUT uses an idempotency key without requiring If-Match. An ETag is neither a password nor a duplicate-request key. Check each canonical operation’s parameters before choosing headers.",
+      "steps": [
+        "Keep the ETag alongside the resource you read.",
+        "Send If-Match on operations that require it.",
+        "On 412, fetch the resource again, compare the change and deliberately retry."
+      ],
+      "example": {
+        "illustrative": true,
+        "If-Match": "\"execution-session:30000000-0000-4000-8000-000000000001:v1\"",
+        "conflict": {
+          "status": 412,
+          "code": "precondition_failed"
+        }
+      },
+      "relatedOperations": [
+        "getExecutionSession",
+        "appendExecutionSessionEvent",
+        "updateWorkItem",
+        "updateFocusPlan"
+      ],
+      "relatedTables": [
+        "execution_sessions",
+        "work_items",
+        "focus_plans"
+      ],
+      "source": [
+        "src/taskiller/users/etag.py",
+        "src/taskiller/django_api/execution_service.py",
+        "src/taskiller/django_api/execution_views.py",
+        "src/taskiller/django_api/work_service.py",
+        "openapi/current.json"
+      ]
+    },
+    {
+      "id": "safe-retries",
+      "title": "Retry a lost response safely",
+      "summary": "Keep the same idempotency key and unchanged body for the same intended write.",
+      "explanation": "A slow network can hide a successful save. Idempotency lets a client repeat that intended request without creating a second result. Applicable writes require an Idempotency-Key between 8 and 200 characters. The shared implementation scopes a key to an owner and operation, hashes the validated body, and stores the successful response within the same transaction as the work. A matching retry replays the result; the same key with a different body produces 409 idempotency_key_reused. Shared records expire according to configuration, with a 24-hour default, so this is not permanent deduplication. Session events instead retain their key, hash and resulting snapshot on the event row; replay is checked before ETag validation. A replay can therefore return an older session snapshot. Fetch current state when needed. Generate a fresh key for a new action; preserve the original when only the response was lost.",
+      "steps": [
+        "Assign one key to one intended write before sending it.",
+        "Retry an uncertain result with the identical body and original key.",
+        "Use a new key for a deliberate revision; reload current state after a historical replay."
+      ],
+      "example": {
+        "illustrative": true,
+        "key": "guide-start-001",
+        "sameBody": "Replay the stored start response.",
+        "changedBody": "409 idempotency_key_reused"
+      },
+      "relatedOperations": [
+        "createWorkItem",
+        "createFocusPlan",
+        "startExecutionSession",
+        "appendExecutionSessionEvent",
+        "upsertExecutionSessionReview"
+      ],
+      "relatedTables": [
+        "idempotency_records",
+        "session_events"
+      ],
+      "source": [
+        "src/taskiller/django_api/idempotency.py",
+        "src/taskiller/django_api/execution_service.py",
+        "src/taskiller/core/config.py"
+      ]
+    },
+    {
+      "id": "session-state",
+      "title": "Read the server clock and event history",
+      "summary": "Running, paused, completed and abandoned are enforced states, not browser guesses.",
+      "explanation": "Starting a session creates a running record and two initial events: session_started and the first segment’s start. The server supplies occurredAt; optional clientOccurredAt adds context but does not choose the authoritative transition time. Pause is valid from running, and resume from paused. Resume shifts the active segment’s start timestamp by the pause duration, preserving the timer’s meaning. Segment and break events must match the current segment, and only optional segments may be skipped. Completion or abandonment ends the session; terminal sessions reject further new events. Only one running or paused session is allowed per owner, backed by a database constraint. Saved plan and work-context snapshots keep history interpretable after later edits. Session completion does not complete its work item or prove every planned segment finished. Events are append-only: the database blocks ordinary updates and deletes, with an explicit account-deletion exception.",
+      "steps": [
+        "Read getActiveExecutionSession after reconnecting or reopening the page.",
+        "Append the appropriate event with the latest ETag and its own retry key.",
+        "Use server timestamps for display and wait for terminal state before reviewing."
+      ],
+      "example": {
+        "illustrative": true,
+        "states": [
+          "running",
+          "paused",
+          "running",
+          "completed"
+        ],
+        "pauseSeconds": 300,
+        "workItemStatusAfterSession": "in_progress"
+      },
+      "relatedOperations": [
+        "getActiveExecutionSession",
+        "appendExecutionSessionEvent",
+        "listExecutionSessionEvents",
+        "upsertExecutionSessionReview"
+      ],
+      "relatedTables": [
+        "execution_sessions",
+        "session_events",
+        "session_reviews",
+        "work_items"
+      ],
+      "source": [
+        "src/taskiller/django_api/execution_service.py",
+        "src/taskiller/execution/schemas.py",
+        "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py",
+        "src/taskiller/django_domain/migrations/0004_relationship_guards.py"
+      ]
+    },
+    {
+      "id": "recommendations",
+      "title": "Understand why a plan was suggested",
+      "summary": "The engine uses explicit inputs and saves reasons rather than hiding its choice.",
+      "explanation": "A recommendation is a suggested Focus Plan, not a command to work a certain way. The active engine combines estimated effort, effective Work Type characteristics, selected strategy, user block-length preferences and any available-time budget. For a Sprint it can consider its executable Chores. Automatic strategy selection has readable rules: learning work tends toward structure, short work toward continuity, and high continuity needs toward flexibility. Records include reason codes, evidence labels, input and plan snapshots, provenance and an engine version. These explain a choice without pretending every heuristic is a scientific certainty. Eligible measured history can provide a personal block-length signal when enough samples exist; one review is insufficient. The response is a recommendation record. A separate createFocusPlan request saves an executable plan, which a later session snapshots. Read the reasons and adjust the plan if it does not fit today’s circumstances.",
+      "steps": [
+        "Supply realistic effort and relevant Work Type characteristics.",
+        "Read the reasons and selected strategy alongside the suggested segments.",
+        "Save a suitable non-template plan, then start a session with that plan."
+      ],
+      "example": {
+        "illustrative": true,
+        "input": {
+          "estimatedEffortSeconds": 900,
+          "strategy": "auto"
+        },
+        "rule": "Short non-learning work can use a continuous block.",
+        "note": "Rule illustration, not a complete recommendation request or response."
+      },
+      "relatedOperations": [
+        "createFocusPlanRecommendation",
+        "getFocusPlanRecommendation",
+        "createFocusPlan"
+      ],
+      "relatedTables": [
+        "work_types",
+        "user_preferences",
+        "focus_plan_recommendations",
+        "focus_plans"
+      ],
+      "source": [
+        "src/taskiller/focus/engine.py",
+        "src/taskiller/focus/schemas.py",
+        "src/taskiller/django_api/focus_service.py",
+        "src/taskiller/analytics/service.py"
+      ]
+    },
+    {
+      "id": "measured-analytics",
+      "title": "Review what actually happened",
+      "summary": "Analytics reconstructs recorded intervals, with reviews providing personal context.",
+      "explanation": "A planned 25-minute block is a target; it is not automatically 25 minutes of work. Analytics reads the saved plan, session timestamps and events to reconstruct active-work, break and paused intervals. It clips intervals to the requested window and uses preferences such as timezone where reports need local calendar boundaries. Work, retrieval, review and planning segments count as work categories; breaks and pauses remain separate. Completion counts, required-segment completion and self-reported ratings describe different things. In the walkthrough, elapsed time is 30 minutes, including five paused minutes, so measured work is approximately 25 minutes. Because no segment_completed event was sent, do not infer full segment completion from session_completed. The system reports history and patterns rather than a single opaque productivity score. Check the date range, timezone and recorded events when a chart surprises you, and interpret small samples cautiously before changing your routine.",
+      "steps": [
+        "Choose the report window and check the account timezone.",
+        "Compare work, breaks, pauses and completion counts separately.",
+        "Inspect session events when a total differs from the planned duration."
+      ],
+      "example": {
+        "illustrative": true,
+        "elapsedSeconds": 1800,
+        "pausedSeconds": 300,
+        "approximatelyActiveWorkSeconds": 1500,
+        "segmentCompletionRecorded": false
+      },
+      "relatedOperations": [
+        "getAnalyticsSummary",
+        "getAnalyticsTimeseries",
+        "getFocusPatterns",
+        "getWorkItemAnalytics",
+        "getWorkTypeAnalytics"
+      ],
+      "relatedTables": [
+        "execution_sessions",
+        "session_events",
+        "session_reviews",
+        "user_preferences"
+      ],
+      "source": [
+        "src/taskiller/analytics/derive.py",
+        "src/taskiller/analytics/service.py",
+        "src/taskiller/django_api/analytics_views.py"
+      ]
+    },
+    {
+      "id": "background-work",
+      "title": "Let durable jobs finish safely",
+      "summary": "The PostgreSQL outbox stores pending jobs; leases and claim tokens control who may finish them.",
+      "explanation": "Some work must outlive its HTTP request, including exports, deletion and authentication email. The service records an outbox job with the relevant request so the intent is durable. A worker claims a due queued job using a row lock that skips jobs already locked by others, increments attempts and assigns a lease plus a unique claim token. Processing checks the token and unexpired lease before committing database effects and acknowledgement together. Expired leases are recovered; failures are rescheduled with bounded backoff until the attempt limit marks the job dead. Export processing uses a fresh repeatable-read transaction, making multiple queries share one consistent database snapshot. This avoids mixing unrelated moments into an archive. Do not call the whole system exactly-once delivery: an external email provider may receive a message before a later local failure. For stuck exports, inspect request status and worker health before requesting more.",
+      "steps": [
+        "Retain the export requestId returned by requestDataExport.",
+        "Poll getDataExportRequest for ready or failed; acceptance does not mean the archive is finished.",
+        "Inspect attempts and leases during support work without acknowledging another worker’s claim."
+      ],
+      "example": {
+        "illustrative": true,
+        "jobStates": [
+          "queued",
+          "running",
+          "succeeded"
+        ],
+        "failurePath": [
+          "running",
+          "queued",
+          "dead"
+        ],
+        "exportSnapshot": "REPEATABLE READ"
+      },
+      "relatedOperations": [
+        "requestDataExport",
+        "getDataExportRequest",
+        "requestAccountDeletion",
+        "requestPasswordReset"
+      ],
+      "relatedTables": [
+        "outbox_jobs",
+        "data_export_requests",
+        "account_deletion_requests"
+      ],
+      "source": [
+        "src/taskiller/django_operations/worker_service.py",
+        "src/taskiller/django_operations/email_delivery.py",
+        "src/taskiller/django_api/privacy_service.py"
+      ]
+    },
+    {
+      "id": "privacy-portability",
+      "title": "Choose the right export and understand deletion",
+      "summary": "An account archive and a portable work document serve different purposes.",
+      "explanation": "The privacy export is an asynchronous account archive in gzip-compressed JSON, marked taskiller-data-export-v1. It includes work, plans, sessions and reviews while excluding password hashes and authentication-token stores. When ready, the API supplies an expiring signed download link; protect it like private data. The portable importer accepts a different format, taskiller.portable.work.v1, for Work Types and a work hierarchy. It validates source references and creates imported work atomically. It does not restore the privacy archive or execution history. Account deletion checks the current user ETag through If-Match, schedules a job after the configured grace period and immediately disables the account and revokes authentication sessions. The default grace is seven days, not continued access or an available undo endpoint. The worker later removes account data and retains a limited deletion record according to retention settings. Download anything needed before confirming deletion.",
+      "steps": [
+        "Request an account archive and wait for ready before downloading.",
+        "Send only the documented portable work format to importPortableWork.",
+        "Before deletion, save needed data and read the returned executeAfter time."
+      ],
+      "example": {
+        "illustrative": true,
+        "privacyFormat": "taskiller-data-export-v1",
+        "portableFormat": "taskiller.portable.work.v1",
+        "defaultDeletionGraceDays": 7,
+        "defaultArchiveLifetimeHours": 24,
+        "defaultDownloadLinkLifetimeSeconds": 600
+      },
+      "relatedOperations": [
+        "requestDataExport",
+        "getDataExportRequest",
+        "downloadDataExport",
+        "importPortableWork",
+        "requestAccountDeletion"
+      ],
+      "relatedTables": [
+        "data_export_requests",
+        "account_deletion_requests",
+        "outbox_jobs",
+        "auth_sessions",
+        "work_items"
+      ],
+      "source": [
+        "src/taskiller/django_api/privacy_service.py",
+        "src/taskiller/django_api/portable_import.py",
+        "src/taskiller/django_api/portable_views.py",
+        "src/taskiller/django_operations/worker_service.py",
+        "src/taskiller/core/config.py",
+        "src/taskiller/django_api/views.py"
+      ]
+    },
+    {
+      "id": "free-hosting",
+      "title": "Know which service does which job",
+      "summary": "Render runs the API and worker; GitHub Pages documentation is a separate static site.",
+      "explanation": "The Render blueprint selects a free Docker web service and enables the embedded worker. The production launcher runs the migration helper, then supervises the Django ASGI server and PostgreSQL-backed worker as child processes in that service. Neon supplies PostgreSQL in the owner’s no-cost deployment setup; its database URL is configured privately, not embedded in the blueprint. Mailjet delivers authentication email, and Vercel hosts the product client. The owner reports existing external checks every five minutes to keep Render awake; these are not a cron job implemented by this guide or a guarantee of uninterrupted service. GitHub Pages serves static documentation separately from the API, database, worker and Vercel app. Reading this JSON should not sign anyone in, send email or mutate live records. For stopped jobs, check the Render process and database connectivity; a working documentation page says nothing about API readiness.",
+      "steps": [
+        "Use /health/live for liveness and /health/ready for readiness checks.",
+        "Check the embedded worker alongside the API when jobs stop progressing.",
+        "Keep Pages examples synthetic and deployment secrets out of documentation."
+      ],
+      "example": {
+        "illustrative": true,
+        "apiAndWorker": "Render Free",
+        "database": "Neon",
+        "email": "Mailjet",
+        "productClient": "Vercel",
+        "documentation": "GitHub Pages, separate static hosting",
+        "ownerReportedExternalCheckMinutes": 5
+      },
+      "relatedOperations": [
+        "healthLive",
+        "healthReady",
+        "healthVersion"
+      ],
+      "relatedTables": [
+        "outbox_jobs"
+      ],
+      "source": [
+        "render.yaml",
+        "Dockerfile",
+        "scripts/run_django_production.py",
+        "src/taskiller/django_project/health.py",
+        "AGENTS.md",
+        ".agents/project-context.md"
+      ]
+    },
+    {
+      "id": "errors-pagination",
+      "title": "Recover from errors and load the next page",
+      "summary": "Use problem codes to choose recovery and opaque cursors to continue lists.",
+      "explanation": "Taskiller service errors use application/problem+json with a status, stable code, readable title and request path; detail, validation metadata and requestId add context. Decide from the code rather than matching the title’s wording. A 401 invalid_access_token calls for the client’s refresh or sign-in flow. A 412 precondition_failed means reload the resource. A 409 open_session_exists means finish or abandon the existing session, while idempotency_key_reused means a retry key was paired with different content. Validation errors use 422; rate_limit_exceeded uses 429 and Retry-After. Keep the request ID when asking for support, without sharing credentials. Lists supporting cursor pagination return items and page metadata. Treat nextCursor as opaque, pass it back with the same filters, and stop when hasMore is false. Do not invent page numbers or edit cursor contents. Restart the listing when its cursor is invalid.",
+      "steps": [
+        "Read status, code and relevant headers before choosing recovery.",
+        "Inspect meta.errors to locate invalid inputs on validation_error.",
+        "Pass nextCursor unchanged with the same filters until hasMore is false."
+      ],
+      "example": {
+        "illustrative": true,
+        "problem": {
+          "type": "/problems/precondition_failed",
+          "title": "Resource version mismatch",
+          "status": 412,
+          "code": "precondition_failed",
+          "instance": "/api/v1/execution-sessions/30000000-0000-4000-8000-000000000001/events"
+        },
+        "lastPage": {
+          "items": [],
+          "page": {
+            "hasMore": false,
+            "nextCursor": null
+          }
+        }
+      },
+      "relatedOperations": [
+        "listWorkItems",
+        "listExecutionSessions",
+        "listExecutionSessionEvents",
+        "listFocusPlans"
+      ],
+      "relatedTables": [
+        "work_items",
+        "execution_sessions",
+        "session_events"
+      ],
+      "source": [
+        "src/taskiller/django_api/errors.py",
+        "src/taskiller/django_api/security.py",
+        "src/taskiller/django_api/execution_service.py",
+        "src/taskiller/django_api/work_service.py",
+        "openapi/current.json"
+      ]
+    },
+    {
+      "id": "tests-migrations",
+      "title": "Protect the rules as the backend changes",
+      "summary": "Tests check behavior; migrations align PostgreSQL’s structure and safety rules.",
+      "explanation": "A migration is a versioned database change, not a user action or a replacement for a backup. The current Django sequence establishes the schema, seeds built-in Work Types, adds integrity constraints and indexes, enforces relationships, then protects security-event history. Database constraints include one open session per owner and unique segment indexes within a plan. PostgreSQL triggers guard owner relationships and append-only history, so bypassing a view should not silently break these invariants. Unit tests check application behavior; integration regressions exercise real database behavior such as concurrency and worker claims. They need an explicitly configured disposable test database and otherwise skip. CI runs migrations, checks migration drift, validates the contract and runs tests with PostgreSQL. Run checks appropriate to changed behavior and report actual results. These examples are illustrations, not evidence that production is healthy. Never run migration experiments against real user data.",
+      "steps": [
+        "Use Python 3.14 and uv; set PYTHONPATH=src for management commands.",
+        "On a disposable database, run migrate and makemigrations --check --dry-run.",
+        "Run relevant pytest and contract checks; use make check for the full release check."
+      ],
+      "example": {
+        "illustrative": true,
+        "commands": [
+          "uv run pytest",
+          "uv run python manage.py makemigrations --check --dry-run",
+          "make check"
+        ],
+        "integrationRequires": [
+          "TASKILLER_ENV=test",
+          "TASKILLER_DATABASE_URL",
+          "TASKILLER_TEST_DATABASE_URL"
+        ]
+      },
+      "relatedOperations": [
+        "startExecutionSession",
+        "appendExecutionSessionEvent",
+        "importPortableWork"
+      ],
+      "relatedTables": [
+        "execution_sessions",
+        "focus_plan_segments",
+        "session_events",
+        "security_events",
+        "work_items"
+      ],
+      "source": [
+        "src/taskiller/django_domain/migrations/0001_existing_schema_baseline.py",
+        "src/taskiller/django_domain/migrations/0002_seed_system_work_types.py",
+        "src/taskiller/django_domain/migrations/0003_current_schema_integrity.py",
+        "src/taskiller/django_domain/migrations/0004_relationship_guards.py",
+        "src/taskiller/django_domain/migrations/0005_security_event_history.py",
+        "tests/integration/test_schema_hardening.py",
+        "tests/integration/test_worker_hardening.py",
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "API",
+      "meaning": "The agreed way a client asks the backend to read or change information. Each operation specifies its accepted request and response.",
+      "example": "createWorkItem saves a Chore submitted by the client."
+    },
+    {
+      "term": "Operation ID",
+      "meaning": "The unique name of an operation in the canonical contract. Use it to connect a guide step to its method and URL.",
+      "example": "Pause and resume both use appendExecutionSessionEvent."
+    },
+    {
+      "term": "Chore",
+      "meaning": "An executable work item in the inbox or under a Project or Sprint. Its completion is separate from ending a session.",
+      "example": "Draft a short outline is the Chore in this walkthrough."
+    },
+    {
+      "term": "Project and Sprint",
+      "meaning": "A Project organizes an outcome; a Sprint groups work beneath a Project. Projects cannot start execution sessions directly.",
+      "example": "Choose a Chore or executable Sprint before starting a session."
+    },
+    {
+      "term": "Work Type",
+      "meaning": "Reusable work characteristics that inform recommendations. Types can be built-in or owner-specific.",
+      "example": "Learning-oriented characteristics can lead to retrieval segments."
+    },
+    {
+      "term": "Focus Plan",
+      "meaning": "An ordered description of intended work and recovery. Starting a session requires a non-template plan bound to the work item.",
+      "example": "The manual plan has one fixed 1,500-second work segment."
+    },
+    {
+      "term": "Segment",
+      "meaning": "One ordered part of a Focus Plan, such as work, retrieval or a break. Only optional segments can be skipped.",
+      "example": "Segment index 0 is the first part, not the first completed part."
+    },
+    {
+      "term": "Execution Session",
+      "meaning": "A recorded attempt to execute a plan, with server timestamps and running, paused, completed or abandoned state.",
+      "example": "The session lasts from 09:02 to 09:32 with a five-minute pause."
+    },
+    {
+      "term": "Event",
+      "meaning": "An append-only record of a session action. The server saves its authoritative time and resulting state.",
+      "example": "paused changes running to paused and records pausedAt."
+    },
+    {
+      "term": "Snapshot",
+      "meaning": "A copy of context saved at a particular moment. It keeps history meaningful after editable source records change.",
+      "example": "A session retains planSnapshot after a later plan edit."
+    },
+    {
+      "term": "Access token",
+      "meaning": "A short-lived bearer credential authorizing protected API calls. Keep its value out of documentation and support messages.",
+      "example": "An expired credential can produce invalid_access_token."
+    },
+    {
+      "term": "Refresh cookie",
+      "meaning": "An HttpOnly cookie that renews access credentials. Refresh rotates its credential; reuse can revoke the device session.",
+      "example": "taskiller_refresh is the name; this guide supplies no cookie value."
+    },
+    {
+      "term": "Origin, CORS and CSRF",
+      "meaning": "Origin identifies a browser page’s site; CORS controls browser response access. Auth-origin checks help prevent unwanted cookie-related cross-site actions.",
+      "example": "An untrusted Origin on refresh can produce auth_origin_forbidden."
+    },
+    {
+      "term": "ETag and If-Match",
+      "meaning": "An ETag identifies a resource version. If-Match sends the version a client intends to change, allowing stale edits to be rejected.",
+      "example": "After pausing at version 2, resume with the version-2 session ETag."
+    },
+    {
+      "term": "Idempotency key",
+      "meaning": "A client-chosen identifier for one intended write. Matching retries can replay its original result instead of repeating the action.",
+      "example": "Retry guide-start-001 with the same start body if its response was lost."
+    },
+    {
+      "term": "Transaction and ORM",
+      "meaning": "A transaction commits related changes together or rolls them back. Django’s ORM maps Python model operations to database queries.",
+      "example": "Session creation and initial events commit as one coordinated write."
+    },
+    {
+      "term": "Outbox and lease",
+      "meaning": "The outbox stores durable jobs. A lease gives a worker a limited claim, checked with a unique token before it finishes.",
+      "example": "An expired export-job lease can be recovered and retried."
+    },
+    {
+      "term": "Problem code",
+      "meaning": "A stable label explaining a specific API failure. Use it to choose recovery rather than matching a human title.",
+      "example": "precondition_failed means reload before retrying a versioned change."
+    },
+    {
+      "term": "Cursor",
+      "meaning": "An opaque continuation value for a paginated list. Send it back unchanged with the same filters for the next portion.",
+      "example": "Stop when page.hasMore is false and page.nextCursor is null."
+    },
+    {
+      "term": "Migration and invariant",
+      "meaning": "A migration changes database structure in a versioned sequence. An invariant is a rule that must stay true across permitted writes.",
+      "example": "The database permits at most one open session per owner."
+    }
+  ]
+}

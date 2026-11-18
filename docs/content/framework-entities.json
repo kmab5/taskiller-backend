@@ -1,0 +1,703 @@
+[
+  {
+    "id": "auth_permission",
+    "model": "Permission",
+    "label": "Admin permissions",
+    "summary": "Named permissions for a particular Django model.",
+    "why": "Allows staff access to be granted per kind of record and action.",
+    "lifecycle": "Django creates default model permissions after migrations; custom permissions may also be declared. Grants can change independently of the permission definition.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Stable identifier referenced by group and direct-user grants."
+      },
+      {
+        "name": "name",
+        "column": "name",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 255,
+        "description": "Readable description shown when choosing permissions."
+      },
+      {
+        "name": "content_type",
+        "column": "content_type_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Content type identifying the model this permission concerns; for example, permission to view a particular kind of record.",
+        "relatedModel": "ContentType",
+        "relatedTable": "django_content_type",
+        "relation": "many-to-one"
+      },
+      {
+        "name": "codename",
+        "column": "codename",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 100,
+        "description": "Action name used in permission checks together with the application label, such as view_user."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "The combination of content_type and codename is unique.",
+      "Default model actions are add, change, delete, and view. These framework grants do not replace Taskiller API ownership checks.",
+      "Deleting a content type deletes its permissions; deleting a permission removes its group and direct-user grants."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/management/__init__.py"
+    ]
+  },
+  {
+    "id": "auth_group_permissions",
+    "model": "Group_permissions",
+    "label": "Group permission grants",
+    "summary": "Links each Django group to the permissions it grants.",
+    "why": "Allows one permission to be shared by many groups and one group to grant many permissions.",
+    "lifecycle": "Added or removed when a group’s permission selection changes; removed when either its group or permission is deleted.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Identifier of this individual group-to-permission grant."
+      },
+      {
+        "name": "group",
+        "column": "group_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django group receiving this grant.",
+        "relatedModel": "Group",
+        "relatedTable": "auth_group",
+        "relation": "many-to-one"
+      },
+      {
+        "name": "permission",
+        "column": "permission_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django permission granted to members of that group.",
+        "relatedModel": "Permission",
+        "relatedTable": "auth_permission",
+        "relation": "many-to-one"
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "Django automatically creates this through model for Group.permissions.",
+      "Each group and permission pair is unique; the row has its own stored id rather than a composite primary key."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/db/models/fields/related.py"
+    ]
+  },
+  {
+    "id": "auth_group",
+    "model": "Group",
+    "label": "Admin groups",
+    "summary": "Named collections of Django permissions for staff accounts.",
+    "why": "Lets administrators assign a role’s permissions once and share them across several accounts.",
+    "lifecycle": "Created and renamed through Django administration or management code; membership and permission links can change. Deleting a group removes its join rows without deleting its members or permissions.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Stable identifier of this permission group."
+      },
+      {
+        "name": "name",
+        "column": "name",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 150,
+        "description": "Unique readable group name used when assigning staff roles."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "Group names are unique.",
+      "Groups apply to Django auth_user identities, not Taskiller users."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/models.py"
+    ]
+  },
+  {
+    "id": "auth_user_groups",
+    "model": "User_groups",
+    "label": "Admin group memberships",
+    "summary": "Links Django accounts to the groups they belong to.",
+    "why": "Lets staff inherit the permissions assigned to each of their groups.",
+    "lifecycle": "Added or removed as staff group membership changes; removed when the account or group is deleted.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Identifier of this individual group membership."
+      },
+      {
+        "name": "user",
+        "column": "user_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django auth_user account joining the group; not a Taskiller product account.",
+        "relatedModel": "User",
+        "relatedTable": "auth_user",
+        "relation": "many-to-one"
+      },
+      {
+        "name": "group",
+        "column": "group_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django group whose permissions the account inherits.",
+        "relatedModel": "Group",
+        "relatedTable": "auth_group",
+        "relation": "many-to-one"
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "Django automatically creates this through model for User.groups.",
+      "Each user and group pair is unique. These memberships do not link to Taskiller’s users table."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/db/models/fields/related.py"
+    ]
+  },
+  {
+    "id": "auth_user_user_permissions",
+    "model": "User_user_permissions",
+    "label": "Direct admin grants",
+    "summary": "Links Django accounts directly to individual permissions.",
+    "why": "Allows a staff account to receive a specific permission without changing a shared group.",
+    "lifecycle": "Added or removed when direct permissions change; removed when the account or permission is deleted.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Identifier of this individual account-to-permission grant."
+      },
+      {
+        "name": "user",
+        "column": "user_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django auth_user account receiving the grant; not a Taskiller product account.",
+        "relatedModel": "User",
+        "relatedTable": "auth_user",
+        "relation": "many-to-one"
+      },
+      {
+        "name": "permission",
+        "column": "permission_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django permission granted directly to that account.",
+        "relatedModel": "Permission",
+        "relatedTable": "auth_permission",
+        "relation": "many-to-one"
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "Django automatically creates this through model for User.user_permissions.",
+      "Each user and permission pair is unique. Direct grants supplement permissions inherited through groups."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/db/models/fields/related.py"
+    ]
+  },
+  {
+    "id": "auth_user",
+    "model": "User",
+    "label": "Admin accounts",
+    "summary": "Django identities used for staff sign-in and administration.",
+    "why": "Gives administrators framework permissions independently of a person’s Taskiller product account.",
+    "lifecycle": "Created by staff-management tools; permissions and access flags can change. Disabling an account blocks normal Django authentication; deleting it removes its group memberships, direct grants, and admin log entries.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Stable identity of this Django admin account, used by permissions and admin activity records."
+      },
+      {
+        "name": "password",
+        "column": "password",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 128,
+        "description": "Encoded password verifier used by Django authentication; never the raw password. An unusable-password marker can prevent password sign-in."
+      },
+      {
+        "name": "last_login",
+        "column": "last_login",
+        "kind": "DateTimeField",
+        "type": "timestamp with timezone",
+        "nullable": true,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Last successful Django sign-in recorded for this account; empty before a login has been recorded."
+      },
+      {
+        "name": "is_superuser",
+        "column": "is_superuser",
+        "kind": "BooleanField",
+        "type": "boolean",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Whether an active account receives all permissions without individual grants."
+      },
+      {
+        "name": "username",
+        "column": "username",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 150,
+        "description": "Unique login name for this Django account; independent of the email-based Taskiller sign-in."
+      },
+      {
+        "name": "first_name",
+        "column": "first_name",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 150,
+        "description": "Optional given name for the administrator; may be blank."
+      },
+      {
+        "name": "last_name",
+        "column": "last_name",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 150,
+        "description": "Optional family name for the administrator; may be blank."
+      },
+      {
+        "name": "email",
+        "column": "email",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 254,
+        "description": "Optional contact email for this Django identity; not the Taskiller account email and not unique by default."
+      },
+      {
+        "name": "is_staff",
+        "column": "is_staff",
+        "kind": "BooleanField",
+        "type": "boolean",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Whether this identity is allowed into Django administration when also active."
+      },
+      {
+        "name": "is_active",
+        "column": "is_active",
+        "kind": "BooleanField",
+        "type": "boolean",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Whether normal Django authentication and permission checks treat the account as active."
+      },
+      {
+        "name": "date_joined",
+        "column": "date_joined",
+        "kind": "DateTimeField",
+        "type": "timestamp with timezone",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "When this Django account was created."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "These are Django auth.User identities, separate from Taskiller’s users table. Creating a Taskiller account does not create an admin account.",
+      "is_staff permits entry to the admin site; model permissions still control available actions unless the active account is a superuser.",
+      "Username is unique. Email and names may be blank; blank text is different from a database NULL."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/auth/base_user.py"
+    ]
+  },
+  {
+    "id": "django_content_type",
+    "model": "ContentType",
+    "label": "Model registry",
+    "summary": "Identifies each Django model by its application and model name.",
+    "why": "Lets permissions and admin history refer to different kinds of records through one shared model registry.",
+    "lifecycle": "Populated after migrations as installed models are discovered; stale entries can be removed by Django’s content-type management command.",
+    "group": "operations",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Stable registry identifier referenced by permissions and admin log entries."
+      },
+      {
+        "name": "app_label",
+        "column": "app_label",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 100,
+        "description": "Django application label containing the model."
+      },
+      {
+        "name": "model",
+        "column": "model",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 100,
+        "description": "Lowercase model name within that application."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "The combination of app_label and model is unique.",
+      "A content type identifies a model, not an individual record or physical table. The same model can have many records."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/contenttypes/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/contenttypes/management/__init__.py"
+    ]
+  },
+  {
+    "id": "django_session",
+    "model": "Session",
+    "label": "Admin browser sessions",
+    "summary": "Server-side browser session records used by Django’s database session backend.",
+    "why": "Keeps Django browser sign-in state on the server while the cookie carries a session key.",
+    "lifecycle": "Created or updated by Django’s session backend; session keys may rotate on sign-in. Logout can remove the session, and clearsessions removes expired records.",
+    "group": "auth",
+    "framework": true,
+    "fields": [
+      {
+        "name": "session_key",
+        "column": "session_key",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": 40,
+        "description": "Random browser-session lookup key, also used in the session cookie; identifies this record."
+      },
+      {
+        "name": "session_data",
+        "column": "session_data",
+        "kind": "TextField",
+        "type": "long text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Encoded and signed session contents, which may include the Django account identity and authentication state; not a raw password."
+      },
+      {
+        "name": "expire_date",
+        "column": "expire_date",
+        "kind": "DateTimeField",
+        "type": "timestamp with timezone",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "When this server-side browser session expires and becomes eligible for cleanup."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "These support Django browser sessions, including admin cookies. They are separate from Taskiller’s API auth_sessions and refresh_tokens.",
+      "The stored session payload is signed and encoded, not encrypted; it must not be presented as raw public guide data.",
+      "There is no user foreign key: authentication state, when present, is inside the encoded session payload.",
+      "expire_date is indexed for expiry cleanup. Messages uses no dedicated model table."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/sessions/models.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/sessions/base_session.py",
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/sessions/backends/db.py"
+    ]
+  },
+  {
+    "id": "django_admin_log",
+    "model": "LogEntry",
+    "label": "Admin activity",
+    "summary": "Records additions, changes, and deletions made through Django administration.",
+    "why": "Shows administrators who performed an admin action and which record it concerned.",
+    "lifecycle": "Written by Django admin actions; object deletion can leave its historical representation in the log. Deleting the acting Django account removes its log entries; deleting a content type clears that link.",
+    "group": "operations",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Identifier of this individual admin activity record."
+      },
+      {
+        "name": "action_time",
+        "column": "action_time",
+        "kind": "DateTimeField",
+        "type": "timestamp with timezone",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "When the admin action was recorded."
+      },
+      {
+        "name": "user",
+        "column": "user_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Django account that performed the admin action.",
+        "relatedModel": "User",
+        "relatedTable": "auth_user",
+        "relation": "many-to-one"
+      },
+      {
+        "name": "content_type",
+        "column": "content_type_id",
+        "kind": "ForeignKey",
+        "type": "integer reference",
+        "nullable": true,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Model of the affected object; may be empty if its content type has been removed or was unavailable.",
+        "relatedModel": "ContentType",
+        "relatedTable": "django_content_type",
+        "relation": "many-to-one"
+      },
+      {
+        "name": "object_id",
+        "column": "object_id",
+        "kind": "TextField",
+        "type": "long text",
+        "nullable": true,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Identifier of the affected object, kept as text so different model key formats fit; may be empty when no identifier was supplied."
+      },
+      {
+        "name": "object_repr",
+        "column": "object_repr",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 200,
+        "description": "Readable description of the object captured for history, even if the object is later deleted."
+      },
+      {
+        "name": "action_flag",
+        "column": "action_flag",
+        "kind": "PositiveSmallIntegerField",
+        "type": "nonnegative small integer",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Whether the action added (1), changed (2), or deleted (3) the object."
+      },
+      {
+        "name": "change_message",
+        "column": "change_message",
+        "kind": "TextField",
+        "type": "long text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "Details of the edit for admin history; may be structured JSON text or a plain explanation, and may be blank."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "The user relation points to Django auth_user, not Taskiller’s users table.",
+      "content_type plus object_id describes the affected object; object_id is text, not a foreign key to that object’s table.",
+      "This table is not protected by Taskiller’s immutable session-event or security-event triggers.",
+      "change_message can hold structured JSON describing edits or a plain message; its storage is text."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/contrib/admin/models.py"
+    ]
+  },
+  {
+    "id": "django_migrations",
+    "model": "Migration",
+    "label": "Migration history",
+    "summary": "Records which Django schema migrations have been applied.",
+    "why": "Lets Django determine which schema changes still need to run and which changes can be reversed.",
+    "lifecycle": "The migration recorder creates its table when needed, records successful application, and removes records on reversal. Fake migration operations can change this history without executing the corresponding schema changes.",
+    "group": "operations",
+    "framework": true,
+    "fields": [
+      {
+        "name": "id",
+        "column": "id",
+        "kind": "AutoField",
+        "type": "auto-increment integer",
+        "nullable": false,
+        "primaryKey": true,
+        "maxLength": null,
+        "description": "Identifier of this migration-history entry."
+      },
+      {
+        "name": "app",
+        "column": "app",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 255,
+        "description": "Application label whose migration was recorded."
+      },
+      {
+        "name": "name",
+        "column": "name",
+        "kind": "CharField",
+        "type": "text",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": 255,
+        "description": "Migration name within the application, such as the initial migration name."
+      },
+      {
+        "name": "applied",
+        "column": "applied",
+        "kind": "DateTimeField",
+        "type": "timestamp with timezone",
+        "nullable": false,
+        "primaryKey": false,
+        "maxLength": null,
+        "description": "When Django recorded the migration as applied."
+      }
+    ],
+    "compositeKey": [],
+    "constraints": [],
+    "indexes": [],
+    "notes": [
+      "This is MigrationRecorder.Migration, included explicitly because it is not a normal installed application model.",
+      "Rows record migration state, not the migration code, schema contents, or a database backup."
+    ],
+    "source": [
+      "https://github.com/django/django/blob/stable/5.2.x/django/db/migrations/recorder.py"
+    ]
+  }
+]
