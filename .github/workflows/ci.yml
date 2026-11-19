@@ -53,47 +53,61 @@ jobs:
           uvx --from pip-audit pip-audit --requirement /tmp/taskiller-runtime.txt --require-hashes --no-deps --disable-pip
 
       - name: Compile
+        if: ${{ !cancelled() }}
         run: uv run python -m compileall -q src tests scripts manage.py
 
       - name: Lint
+        if: ${{ !cancelled() }}
         run: uv run ruff check .
 
       - name: Format check
+        if: ${{ !cancelled() }}
         run: uv run ruff format --check .
 
       - name: Typecheck
+        if: ${{ !cancelled() }}
         run: uv run pyright
 
       - name: Django migrate
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python manage.py migrate --noinput
 
       - name: Migration drift
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python manage.py makemigrations --check --dry-run
 
       - name: Django system check
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python manage.py check
 
       - name: Final Django audit
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python scripts/django_phase10_final_audit.py
 
       - name: Cutover contract
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python scripts/django_phase8_cutover_check.py
 
       - name: Static admin contract freshness
+        if: ${{ !cancelled() }}
         run: |
           uv run python scripts/build_admin_contract.py --check
           uv run python docs/tools/build_data.py --check
 
       - name: Baseline audit
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python scripts/django_phase9_baseline_audit.py
 
       - name: Collect Django static files
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python manage.py collectstatic --noinput
 
       - name: Production-shaped smoke
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python scripts/django_phase9_production_smoke.py
 
       - name: Domain and worker smoke checks
+        if: ${{ !cancelled() }}
         run: |
           uv run python scripts/django_phase3_auth_smoke.py
           uv run python scripts/django_phase4_work_smoke.py
@@ -102,9 +116,11 @@ jobs:
           uv run python scripts/django_phase7_smoke.py
 
       - name: Tests
+        if: ${{ !cancelled() }}
         run: uv run pytest --cov=taskiller --cov-report=term-missing --cov-report=xml
 
       - name: Release contract
+        if: ${{ !cancelled() }}
         run: PYTHONPATH=src uv run python scripts/release_check.py
 
       - name: Build container
