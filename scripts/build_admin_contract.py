@@ -211,12 +211,25 @@ def build(contract):
     schemas["AdminBulkResponse"]["properties"]["results"]["items"] = ref("AdminBulkResult")
     paths = {}
     # Endpoint metadata comes from committed decorators and URL declarations, statically.
-    views, parents = {}, {}
+    views, parents, overrides = {}, {}, {}
     for path in sorted(ADMIN.glob("*views.py")):
         for node in ast.parse(path.read_text(encoding="utf-8")).body:
             if not isinstance(node, ast.ClassDef):
                 continue
             parents[node.name] = [ast.unparse(base).split(".")[-1] for base in node.bases]
+            overrides[node.name] = {}
+            for decorator in node.decorator_list:
+                if (
+                    not isinstance(decorator, ast.Call)
+                    or ast.unparse(decorator.func) != "extend_schema_view"
+                ):
+                    continue
+                for keyword in decorator.keywords:
+                    if not isinstance(keyword.value, ast.Call):
+                        continue
+                    for option in keyword.value.keywords:
+                        if option.arg == "operation_id":
+                            overrides[node.name][keyword.arg] = literal(option.value)
             operations = {}
             for method in node.body:
                 if not isinstance(method, ast.FunctionDef) or method.name not in METHODS:
@@ -302,6 +315,9 @@ def build(contract):
         for parent in parents.get(name, []):
             operations.update(inherited_operations(parent))
         operations.update(views.get(name, {}))
+        operations = copy.deepcopy(operations)
+        for method, operation_id in overrides.get(name, {}).items():
+            operations[method]["operationId"] = operation_id
         if name == "StaffRolesView":
             operations.pop("post", None)
         return operations
@@ -324,31 +340,7 @@ def build(contract):
             operations = copy.deepcopy(inherited_operations(view_name))
             for method, operation in operations.items():
                 if not operation["operationId"]:
-                    # Spectacular infers /api/v1 as the common API path prefix.
-                    tokens = (
-                        re.sub(r"{\w+}", "", full_path.removeprefix("/api/v1"))
-                        .strip("/")
-                        .split("/")
-                    )
-                    action = {
-                        "get": "retrieve",
-                        "post": "create",
-                        "patch": "partial_update",
-                        "put": "update",
-                        "delete": "destroy",
-                    }[method]
-                    if method == "get" and any(
-                        response.get("content", {})
-                        .get("application/json", {})
-                        .get("schema", {})
-                        .get("type")
-                        == "array"
-                        for response in operation["responses"].values()
-                    ):
-                        action = "list"
-                    operation["operationId"] = "_".join(
-                        [token.replace("-", "_") for token in tokens if token] + [action]
-                    )
+                    raise ValueError(f"Explicit operation_id required for {view_name}.{method}")
                 if route.startswith("auth/") and route not in {"auth/logout", "auth/step-up"}:
                     operation["security"] = []
                 for parameter in re.findall(r"{(\w+)}", full_path):
@@ -456,12 +448,12 @@ def build(contract):
             if operations:
                 paths.setdefault(full_path, {}).update(operations)
     ids = {}
-    for path, operations in sorted(paths.items()):
-        for method, operation in sorted(operations.items()):
+    for _path, operations in sorted(paths.items()):
+        for _method, operation in sorted(operations.items()):
             name = operation["operationId"]
             ids[name] = ids.get(name, 0) + 1
             if ids[name] > 1:
-                operation["operationId"] += f"_{ids[name]}"
+                raise ValueError(f"Duplicate explicit console operation_id: {name}")
     if not paths:
         raise ValueError("No declared console routes found; refusing to erase the contract")
     result["paths"] = {

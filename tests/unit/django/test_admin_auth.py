@@ -246,9 +246,11 @@ def test_mfa_cipher_uses_ephemeral_keys_and_supports_rotation():
 
 
 def test_missing_encryption_configuration_fails_closed():
-    with override_settings(ADMIN_CONSOLE_ENCRYPTION_KEYS=[]):
-        with pytest.raises(TaskillerAPIError) as error:
-            views.encrypt("sensitive-secret")
+    with (
+        override_settings(ADMIN_CONSOLE_ENCRYPTION_KEYS=[]),
+        pytest.raises(TaskillerAPIError) as error,
+    ):
+        views.encrypt("sensitive-secret")
     assert error.value.status_code == 503
 
 

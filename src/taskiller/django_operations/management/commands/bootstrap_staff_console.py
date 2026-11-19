@@ -23,7 +23,10 @@ from taskiller.django_domain.models import (
 
 
 class Command(BaseCommand):
-    help = "Enroll a named Django staff user as console Owner or recover lost MFA. Outputs one single-use invitation."
+    help = (
+        "Enroll a named Django staff user as console Owner or recover lost MFA. "
+        "Outputs one single-use invitation."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("--username", required=True)
@@ -34,7 +37,7 @@ class Command(BaseCommand):
         del args
         reason = options["reason"].strip()
         if not reason or len(reason) > 500:
-            raise CommandError("Provide an operator reason of 1–500 characters")
+            raise CommandError("Provide an operator reason of 1-500 characters")
         User = get_user_model()
         with transaction.atomic(), owner_lock():
             user = (

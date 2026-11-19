@@ -39,7 +39,6 @@ def test_composite_primary_keys_match_existing_tables() -> None:
 
 def test_operational_models_are_registered_read_only() -> None:
     assert domain.TaskillerUser in admin.site._registry
-    assert domain.WorkItem in admin.site._registry
     assert domain.ExecutionSession in admin.site._registry
 
     for model in (
@@ -48,5 +47,39 @@ def test_operational_models_are_registered_read_only() -> None:
         domain.PasswordResetToken,
         domain.IdempotencyRecord,
         domain.RateLimitBucket,
+        domain.WorkType,
+        domain.WorkItem,
+        domain.FocusPlan,
+        domain.StaffEnrollment,
+        domain.StaffChallenge,
+        domain.StaffSession,
+        domain.StaffRecoveryCode,
     ):
         assert model not in admin.site._registry
+
+    forbidden_fields = {
+        "password_hash",
+        "token_hash",
+        "description",
+        "notes",
+        "note",
+        "payload_json",
+        "metadata_json",
+        "archive_bytes",
+        "last_error",
+        "mfa_secret_encrypted",
+        "token_digest",
+        "auth_hash",
+        "secret_digest",
+        "code_digest",
+        "suspension_reason",
+    }
+    for model, model_admin in admin.site._registry.items():
+        if model._meta.app_label != "django_domain":
+            continue
+        assert model_admin.fields
+        assert not forbidden_fields.intersection(model_admin.fields)
+        assert model_admin.get_readonly_fields(None) == model_admin.fields
+        assert not model_admin.has_add_permission(None)
+        assert not model_admin.has_change_permission(None)
+        assert not model_admin.has_delete_permission(None)

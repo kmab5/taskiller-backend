@@ -15,6 +15,7 @@ from django.middleware.csrf import get_token, rotate_token
 from django.urls import path
 from django.utils.crypto import constant_time_compare
 from drf_spectacular.utils import extend_schema
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from taskiller.core.time import utc_now
@@ -184,10 +185,11 @@ def me(session):
 
 class PublicAdminAPIView(AdminAPIView):
     authentication_classes = ()
+    permission_classes = (AllowAny,)
 
 
 class CsrfView(PublicAdminAPIView):
-    @extend_schema(operation_id="adminCsrf", responses=S.CsrfResponse, tags=["Staff auth"])
+    @extend_schema(operation_id="adminCsrf", auth=[], responses=S.CsrfResponse, tags=["Staff auth"])
     def get(self, request):
         return csrf_response(request, Response({}))
 
@@ -195,6 +197,7 @@ class CsrfView(PublicAdminAPIView):
 class LoginView(PublicAdminAPIView):
     @extend_schema(
         operation_id="adminLogin",
+        auth=[],
         request=S.LoginRequest,
         responses=S.ChallengeResponse,
         tags=["Staff auth"],
@@ -226,6 +229,7 @@ class LoginView(PublicAdminAPIView):
 class MfaView(PublicAdminAPIView):
     @extend_schema(
         operation_id="adminMfa",
+        auth=[],
         request=S.MfaRequest,
         responses=S.StaffMeResponse,
         tags=["Staff auth"],
@@ -340,6 +344,7 @@ class StepUpView(AdminAPIView):
 class EnrollView(PublicAdminAPIView):
     @extend_schema(
         operation_id="adminEnroll",
+        auth=[],
         request=S.EnrollmentRequest,
         responses=S.EnrollmentChallengeResponse,
         tags=["Staff auth"],
@@ -423,7 +428,7 @@ class EnrollView(PublicAdminAPIView):
                 "next": "enroll_verify",
                 "secret": secret,
                 "provisioningUri": pyotp.TOTP(secret).provisioning_uri(
-                    user.get_username(), issuer_name="Taskiller Staff"
+                    name=user.get_username(), issuer_name="Taskiller Staff"
                 ),
             }
         )
@@ -434,6 +439,7 @@ class EnrollView(PublicAdminAPIView):
 class EnrollConfirmView(PublicAdminAPIView):
     @extend_schema(
         operation_id="adminEnrollConfirm",
+        auth=[],
         request=S.MfaRequest,
         responses=S.EnrollmentResponse,
         tags=["Staff auth"],

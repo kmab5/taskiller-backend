@@ -174,7 +174,7 @@ def test_success_receipt_omits_invitation_token(monkeypatch):
 
 
 def test_retry_whitelist_excludes_irreversible_and_delivery_jobs():
-    assert actions.RETRYABLE_JOB_TYPES == {"data_export"}
+    assert {"data_export"} == actions.RETRYABLE_JOB_TYPES
 
 
 @pytest.mark.parametrize(

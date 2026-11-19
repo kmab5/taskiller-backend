@@ -481,9 +481,8 @@ def test_unenrolled_owner_must_not_allow_last_enrolled_owner_removal(operator):
     )
     other.groups.add(Group.objects.get(name=f"{policy.GROUP_PREFIX}Owner"))
     domain.StaffEnrollment.objects.create(user=other, mfa_secret_encrypted="")
-    with transaction.atomic(), policy.owner_lock():
-        with pytest.raises(TaskillerAPIError) as error:
-            policy.ensure_not_last_owner(operator.enrollment)
+    with transaction.atomic(), policy.owner_lock(), pytest.raises(TaskillerAPIError) as error:
+        policy.ensure_not_last_owner(operator.enrollment)
     assert error.value.code == "admin_last_owner"
 
 
@@ -699,13 +698,15 @@ def test_owner_lock_excludes_a_competing_database_transaction():
     use only the advisory lock on the independent connection, never commit fixture
     records to make them visible to another thread.
     """
-    with transaction.atomic(), policy.owner_lock():
-        with psycopg.connect(**connection.get_connection_params()) as contender:
-            with contender.cursor() as cursor:
-                cursor.execute("SET LOCAL statement_timeout = '2s'")
-                cursor.execute("SELECT pg_try_advisory_xact_lock(%s)", [policy.OWNER_LOCK_ID])
-                assert cursor.fetchone() == (False,)
-            contender.rollback()
+    with (
+        transaction.atomic(),
+        policy.owner_lock(),
+        psycopg.connect(**connection.get_connection_params()) as contender,
+        contender.cursor() as cursor,
+    ):
+        cursor.execute("SET LOCAL statement_timeout = '2s'")
+        cursor.execute("SELECT pg_try_advisory_xact_lock(%s)", [policy.OWNER_LOCK_ID])
+        assert cursor.fetchone() == (False,)
 
 
 def test_two_enrolled_owners_can_lose_access_only_until_one_remains(operator):
@@ -722,9 +723,8 @@ def test_two_enrolled_owners_can_lose_access_only_until_one_remains(operator):
     with transaction.atomic(), policy.owner_lock():
         policy.ensure_not_last_owner(operator.enrollment)
         domain.StaffEnrollment.objects.filter(pk=operator.enrollment.pk).update(enabled=False)
-    with transaction.atomic(), policy.owner_lock():
-        with pytest.raises(TaskillerAPIError) as error:
-            policy.ensure_not_last_owner(remaining)
+    with transaction.atomic(), policy.owner_lock(), pytest.raises(TaskillerAPIError) as error:
+        policy.ensure_not_last_owner(remaining)
     assert error.value.code == "admin_last_owner"
 
 

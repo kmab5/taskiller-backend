@@ -87,14 +87,34 @@ def test_keyset_ties_are_stable_and_cursors_are_scoped(window):
 
 
 def test_job_scope_applies_before_pagination_and_omits_secrets(window):
-    safe = job()
-    job("data_export")
-    job("account_delete")
-    result = q.jobs(window, "staff:jobs")
-    assert [item["id"] for item in result["items"]] == [safe.id]
+    # Release smoke jobs may predate this transaction. Give these seeds an exact,
+    # historical timestamp window instead of assuming the shared queue is empty.
+    stamp = timezone.now() - timedelta(days=60)
+    safe = [job(created_at=stamp), job("retention", created_at=stamp)]
+    job("data_export", created_at=stamp)
+    job("account_delete", created_at=stamp)
+    values = {**window, "start": stamp, "end": stamp + timedelta(microseconds=1)}
+    seen = []
+    for _ in range(len(safe)):
+        result = q.jobs(values, "staff:jobs")
+        assert len(result["items"]) == 1
+        assert result["items"][0]["type"] in {"auth_email", "retention"}
+        assert "PRIVATE" not in str(result)
+        seen.extend(item["id"] for item in result["items"])
+        if result["nextCursor"] is None:
+            break
+        values = {**values, "cursor": result["nextCursor"]}
+    assert seen == sorted((row.id for row in safe), reverse=True)
     assert result["nextCursor"] is None
-    assert "PRIVATE" not in str(result)
-    filtered = q.jobs({**window, "type": "account_delete"}, "staff:jobs")
+    filtered = q.jobs(
+        {
+            **window,
+            "start": stamp,
+            "end": stamp + timedelta(microseconds=1),
+            "type": "account_delete",
+        },
+        "staff:jobs",
+    )
     assert filtered == {"items": [], "nextCursor": None}
 
 
@@ -233,10 +253,11 @@ def test_activity_cursor_omits_payloads_and_support_security_rows(window):
     ADMIN_CONSOLE_ENABLED=True,
     ADMIN_CONSOLE_WRITES_ENABLED=False,
     ADMIN_CONSOLE_ORIGINS=["https://console.example.com"],
+    CSRF_TRUSTED_ORIGINS=["https://console.example.com"],
 )
 def test_staff_read_boundary_and_search_csrf():
     _, _, session, token = staff("Support")
-    factory = APIRequestFactory(HTTP_COOKIE=f"taskiller_staff={token}")
+    factory = APIRequestFactory(enforce_csrf_checks=True, HTTP_COOKIE=f"taskiller_staff={token}")
     account = product_user()
     response = v.UserDetailView.as_view()(factory.get("/users"), user_id=account.id)
     assert response.status_code == 200
@@ -251,6 +272,7 @@ def test_staff_read_boundary_and_search_csrf():
         )
     )
     assert denied.status_code == 403
+    assert denied.data["code"] == "admin_csrf_failed"
     forbidden = v.UserWorkView.as_view()(
         factory.get("/work", {"kind": "chore"}), user_id=account.id
     )
@@ -272,7 +294,10 @@ def test_search_is_a_csrf_protected_read_with_writes_disabled():
 
     _, _, _, token = staff("Support")
     csrf = _get_new_csrf_string()
-    factory = APIRequestFactory(HTTP_COOKIE=f"taskiller_staff={token}; taskiller_staff_csrf={csrf}")
+    factory = APIRequestFactory(
+        enforce_csrf_checks=True,
+        HTTP_COOKIE=f"taskiller_staff={token}; taskiller_staff_csrf={csrf}",
+    )
     user = product_user()
     response = v.UserSearchView.as_view()(
         factory.post(

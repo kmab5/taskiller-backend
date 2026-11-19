@@ -296,7 +296,8 @@ def build():
     digest = hashlib.sha256()
     for path in inputs:
         digest.update(path.relative_to(ROOT).as_posix().encode())
-        digest.update(path.read_bytes())
+        # Git may check out CRLF on Windows and LF on Linux; hash canonical text.
+        digest.update(path.read_text(encoding="utf-8").encode("utf-8"))
     return {
         "meta": {
             "name": "Taskiller product backend field guide",

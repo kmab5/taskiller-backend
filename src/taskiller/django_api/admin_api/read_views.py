@@ -57,7 +57,11 @@ def account(user_id):
 class OverviewView(AdminAPIView):
     capability = "view_overview"
 
-    @extend_schema(parameters=[s.ReadFiltersSerializer], responses=s.OverviewSerializer)
+    @extend_schema(
+        operation_id="adminOverview",
+        parameters=[s.ReadFiltersSerializer],
+        responses=s.OverviewSerializer,
+    )
     def get(self, request):
         capabilities = effective_capabilities(request.user)
         return respond(
@@ -73,7 +77,11 @@ class OverviewView(AdminAPIView):
 class UsersView(AdminAPIView):
     capability = "view_users"
 
-    @extend_schema(parameters=[s.UserFiltersSerializer], responses=s.UserPageSerializer)
+    @extend_schema(
+        operation_id="adminUsers",
+        parameters=[s.UserFiltersSerializer],
+        responses=s.UserPageSerializer,
+    )
     def get(self, request):
         return respond(
             s.UserPageSerializer,
@@ -84,7 +92,11 @@ class UsersView(AdminAPIView):
 class UserSearchView(AdminAPIView):
     capability = "view_users"
 
-    @extend_schema(request=s.UserFiltersSerializer, responses=s.UserPageSerializer)
+    @extend_schema(
+        operation_id="adminSearchUsers",
+        request=s.UserFiltersSerializer,
+        responses=s.UserPageSerializer,
+    )
     def post(self, request):
         # AdminAPIView enforces CSRF for this cookie-authenticated POST as for commands.
         return respond(
@@ -96,7 +108,7 @@ class UserSearchView(AdminAPIView):
 class UserDetailView(AdminAPIView):
     capability = "view_users"
 
-    @extend_schema(responses=s.UserSerializer)
+    @extend_schema(operation_id="adminUserDetail", responses=s.UserSerializer)
     def get(self, request, user_id):
         row = account(user_id)
         response = respond(s.UserSerializer, q.user_projection(row))
@@ -107,7 +119,11 @@ class UserDetailView(AdminAPIView):
 class UserActivityView(AdminAPIView):
     capability = "view_activity"
 
-    @extend_schema(parameters=[s.ReadFiltersSerializer], responses=s.ActivityPageSerializer)
+    @extend_schema(
+        operation_id="adminUserActivity",
+        parameters=[s.ReadFiltersSerializer],
+        responses=s.ActivityPageSerializer,
+    )
     def get(self, request, user_id):
         account(user_id)
         security = "manage_accounts" in effective_capabilities(request.user)
@@ -125,7 +141,11 @@ class UserActivityView(AdminAPIView):
 class UserSessionsView(AdminAPIView):
     capability = "view_users"
 
-    @extend_schema(parameters=[s.ReadFiltersSerializer], responses=s.SessionPageSerializer)
+    @extend_schema(
+        operation_id="adminUserSessions",
+        parameters=[s.ReadFiltersSerializer],
+        responses=s.SessionPageSerializer,
+    )
     def get(self, request, user_id):
         account(user_id)
         values = filters(request)
@@ -141,7 +161,9 @@ class UserSessionsView(AdminAPIView):
 class JobsView(AdminAPIView):
     capability = "view_jobs"
 
-    @extend_schema(parameters=[s.JobFiltersSerializer], responses=s.JobPageSerializer)
+    @extend_schema(
+        operation_id="adminJobs", parameters=[s.JobFiltersSerializer], responses=s.JobPageSerializer
+    )
     def get(self, request):
         values = filters(request, s.JobFiltersSerializer)
         capabilities = effective_capabilities(request.user)
@@ -163,7 +185,11 @@ class PrivacyRequestsView(AdminAPIView):
     capability = "manage_privacy"
     step_up = True
 
-    @extend_schema(parameters=[s.PrivacyFiltersSerializer], responses=s.PrivacyPageSerializer)
+    @extend_schema(
+        operation_id="adminPrivacyRequests",
+        parameters=[s.PrivacyFiltersSerializer],
+        responses=s.PrivacyPageSerializer,
+    )
     def get(self, request):
         values = filters(request, s.PrivacyFiltersSerializer)
         kind = values["type"]
@@ -183,7 +209,11 @@ class PrivacyDetailView(AdminAPIView):
     capability = "manage_privacy"
     step_up = True
 
-    @extend_schema(parameters=[s.PrivacyFiltersSerializer], responses=s.PrivacySerializer)
+    @extend_schema(
+        operation_id="adminPrivacyDetail",
+        parameters=[s.PrivacyFiltersSerializer],
+        responses=s.PrivacySerializer,
+    )
     def get(self, request, request_id):
         values = filters(request, s.PrivacyFiltersSerializer)
         rows, _ = q.privacy_queryset(values["type"], values)
@@ -195,7 +225,11 @@ class PrivacyDetailView(AdminAPIView):
 class AuditView(AdminAPIView):
     capability = "view_audit"
 
-    @extend_schema(parameters=[s.AuditFiltersSerializer], responses=s.AuditPageSerializer)
+    @extend_schema(
+        operation_id="adminAudit",
+        parameters=[s.AuditFiltersSerializer],
+        responses=s.AuditPageSerializer,
+    )
     def get(self, request):
         values = filters(request, s.AuditFiltersSerializer)
         owner = request.user.groups.filter(name="taskiller-console:Owner").exists()
@@ -223,7 +257,11 @@ class StaffView(AdminAPIView):
     capability = "manage_staff"
     step_up = True
 
-    @extend_schema(parameters=[s.ReadFiltersSerializer], responses=s.StaffPageSerializer)
+    @extend_schema(
+        operation_id="adminStaff",
+        parameters=[s.ReadFiltersSerializer],
+        responses=s.StaffPageSerializer,
+    )
     def get(self, request):
         values = filters(request)
         rows = q.bounded(
@@ -261,7 +299,7 @@ class RolesView(AdminAPIView):
     capability = "manage_staff"
     step_up = True
 
-    @extend_schema(responses=s.RoleSerializer(many=True))
+    @extend_schema(operation_id="adminRoles", responses=s.RoleSerializer(many=True))
     def get(self, request):
         response = Response(
             s.RoleSerializer(
@@ -280,7 +318,11 @@ class UserWorkView(AdminAPIView):
     capability = "read_private"
     step_up = True
 
-    @extend_schema(parameters=[s.WorkFiltersSerializer], responses=s.WorkPageSerializer)
+    @extend_schema(
+        operation_id="adminUserWork",
+        parameters=[s.WorkFiltersSerializer],
+        responses=s.WorkPageSerializer,
+    )
     def get(self, request, user_id):
         account(user_id)
         values = filters(request, s.WorkFiltersSerializer)
@@ -300,7 +342,11 @@ class WorkDetailView(AdminAPIView):
     capability = "read_private"
     step_up = True
 
-    @extend_schema(parameters=[s.WorkFiltersSerializer], responses=s.WorkSerializer)
+    @extend_schema(
+        operation_id="adminWorkDetail",
+        parameters=[s.WorkFiltersSerializer],
+        responses=s.WorkSerializer,
+    )
     def get(self, request, work_id):
         values = filters(request, s.WorkFiltersSerializer)
         kind = values["kind"]

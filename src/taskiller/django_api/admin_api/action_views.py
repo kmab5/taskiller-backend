@@ -1,7 +1,7 @@
 """Relative URL patterns for console commands; mounted by admin_api.urls."""
 
 from django.urls import path
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.response import Response
 
 from taskiller.django_api.admin_api import actions
@@ -64,30 +64,36 @@ class AccountCommandView(CommandView):
         return super().post(request, target_id)
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminSuspendUser"))
 class SuspendView(AccountCommandView):
     command = "users.suspend"
     step_up = True
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminReactivateUser"))
 class ReactivateView(AccountCommandView):
     command = "users.reactivate"
     step_up = True
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminRecoveryEmail"))
 class RecoveryEmailView(AccountCommandView):
     command = "users.recovery-email"
     capability = "recovery_email"
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminRevokeUserSessions"))
 class RevokeSessionsView(AccountCommandView):
     command = "users.revoke-sessions"
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminRetryJob"))
 class RetryJobView(CommandView):
     command = "jobs.retry"
     capability = "retry_jobs"
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminInviteStaff"))
 class StaffInvitationView(CommandView):
     command = "staff.invite"
     capability = "manage_staff"
@@ -99,34 +105,39 @@ class StaffInvitationView(CommandView):
         return super().post(request)
 
 
+@extend_schema_view(patch=extend_schema(operation_id="adminUpdateStaffRoles"))
 class StaffRolesView(CommandView):
     command = "staff.roles"
     capability = "manage_staff"
     step_up = True
     serializer_type = RolesSerializer
-    http_method_names = ["patch", "options"]
+    http_method_names = ("patch", "options")
 
     @extend_schema(request=RolesSerializer, responses={200: CommandResponseSerializer})
     def patch(self, request, target_id):
         return super().post(request, target_id)
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminRevokeStaffAccess"))
 class StaffRevokeAccessView(CommandView):
     command = "staff.revoke-access"
     capability = "manage_staff"
     step_up = True
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminRequestExport"))
 class PrivacyExportView(CommandView):
     command = "privacy.export"
     capability = "manage_privacy"
     step_up = True
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminRequestDeletion"))
 class PrivacyDeletionView(PrivacyExportView):
     command = "privacy.deletion"
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminCorrectWork"))
 class WorkCorrectionView(CommandView):
     command = "work.correct"
     capability = "read_private"
@@ -138,6 +149,7 @@ class WorkCorrectionView(CommandView):
         return super().post(request, target_id)
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminBulkPreview"))
 class BulkPreviewView(AdminAPIView):
     writes = True
     capability = ""
@@ -148,6 +160,7 @@ class BulkPreviewView(AdminAPIView):
         return _response(result)
 
 
+@extend_schema_view(post=extend_schema(operation_id="adminBulkExecute"))
 class BulkExecuteView(AdminAPIView):
     writes = True
     capability = ""

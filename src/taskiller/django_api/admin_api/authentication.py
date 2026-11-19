@@ -9,7 +9,7 @@ from django.middleware.csrf import CsrfViewMiddleware, _check_token_format
 from django.utils.crypto import constant_time_compare
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from taskiller.core.time import utc_now
@@ -124,7 +124,7 @@ class StaffAuthenticationScheme(OpenApiAuthenticationExtension):
 
 class AdminAPIView(APIView):
     authentication_classes = (StaffAuthentication,)
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
     capability = None
     step_up = False
     writes = False

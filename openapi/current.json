@@ -9369,7 +9369,7 @@
     },
     "/api/v1/admin/users/{target_id}/suspend": {
       "post": {
-        "operationId": "admin_users_suspend_create",
+        "operationId": "adminSuspendUser",
         "tags": [
           "Admin"
         ],
@@ -9683,7 +9683,7 @@
     },
     "/api/v1/admin/users/{target_id}/reactivate": {
       "post": {
-        "operationId": "admin_users_reactivate_create",
+        "operationId": "adminReactivateUser",
         "tags": [
           "Admin"
         ],
@@ -9997,7 +9997,7 @@
     },
     "/api/v1/admin/users/{target_id}/recovery-email": {
       "post": {
-        "operationId": "admin_users_recovery_email_create",
+        "operationId": "adminRecoveryEmail",
         "tags": [
           "Admin"
         ],
@@ -10242,7 +10242,7 @@
     },
     "/api/v1/admin/users/{target_id}/revoke-sessions": {
       "post": {
-        "operationId": "admin_users_revoke_sessions_create",
+        "operationId": "adminRevokeUserSessions",
         "tags": [
           "Admin"
         ],
@@ -10487,7 +10487,7 @@
     },
     "/api/v1/admin/jobs/{target_id}/retry": {
       "post": {
-        "operationId": "admin_jobs_retry_create",
+        "operationId": "adminRetryJob",
         "tags": [
           "Admin"
         ],
@@ -10732,7 +10732,7 @@
     },
     "/api/v1/admin/staff/invitations": {
       "post": {
-        "operationId": "admin_staff_invitations_create",
+        "operationId": "adminInviteStaff",
         "tags": [
           "Admin"
         ],
@@ -10969,7 +10969,7 @@
     },
     "/api/v1/admin/staff/{target_id}/roles": {
       "patch": {
-        "operationId": "admin_staff_roles_partial_update",
+        "operationId": "adminUpdateStaffRoles",
         "tags": [
           "Admin"
         ],
@@ -11283,7 +11283,7 @@
     },
     "/api/v1/admin/staff/{target_id}/revoke-access": {
       "post": {
-        "operationId": "admin_staff_revoke_access_create",
+        "operationId": "adminRevokeStaffAccess",
         "tags": [
           "Admin"
         ],
@@ -11597,7 +11597,7 @@
     },
     "/api/v1/admin/users/{target_id}/privacy/export": {
       "post": {
-        "operationId": "admin_users_privacy_export_create",
+        "operationId": "adminRequestExport",
         "tags": [
           "Admin"
         ],
@@ -11842,7 +11842,7 @@
     },
     "/api/v1/admin/users/{target_id}/privacy/deletion": {
       "post": {
-        "operationId": "admin_users_privacy_deletion_create",
+        "operationId": "adminRequestDeletion",
         "tags": [
           "Admin"
         ],
@@ -12156,7 +12156,7 @@
     },
     "/api/v1/admin/work/{target_id}/correct": {
       "post": {
-        "operationId": "admin_work_correct_create",
+        "operationId": "adminCorrectWork",
         "tags": [
           "Admin"
         ],
@@ -12470,7 +12470,7 @@
     },
     "/api/v1/admin/bulk/preview": {
       "post": {
-        "operationId": "admin_bulk_preview_create",
+        "operationId": "adminBulkPreview",
         "tags": [
           "Admin"
         ],
@@ -12680,7 +12680,7 @@
     },
     "/api/v1/admin/bulk/execute": {
       "post": {
-        "operationId": "admin_bulk_execute_create",
+        "operationId": "adminBulkExecute",
         "tags": [
           "Admin"
         ],
@@ -14482,7 +14482,7 @@
     },
     "/api/v1/admin/overview": {
       "get": {
-        "operationId": "admin_overview_retrieve",
+        "operationId": "adminOverview",
         "tags": [
           "Admin"
         ],
@@ -14701,7 +14701,7 @@
     },
     "/api/v1/admin/users": {
       "get": {
-        "operationId": "admin_users_retrieve",
+        "operationId": "adminUsers",
         "tags": [
           "Admin"
         ],
@@ -14952,7 +14952,7 @@
     },
     "/api/v1/admin/users/search": {
       "post": {
-        "operationId": "admin_users_search_create",
+        "operationId": "adminSearchUsers",
         "tags": [
           "Admin"
         ],
@@ -15162,7 +15162,7 @@
     },
     "/api/v1/admin/users/{user_id}": {
       "get": {
-        "operationId": "admin_users_retrieve_2",
+        "operationId": "adminUserDetail",
         "tags": [
           "Admin"
         ],
@@ -15405,7 +15405,7 @@
     },
     "/api/v1/admin/users/{user_id}/activity": {
       "get": {
-        "operationId": "admin_users_activity_retrieve",
+        "operationId": "adminUserActivity",
         "tags": [
           "Admin"
         ],
@@ -15632,7 +15632,7 @@
     },
     "/api/v1/admin/users/{user_id}/sessions": {
       "get": {
-        "operationId": "admin_users_sessions_retrieve",
+        "operationId": "adminUserSessions",
         "tags": [
           "Admin"
         ],
@@ -15859,7 +15859,7 @@
     },
     "/api/v1/admin/jobs": {
       "get": {
-        "operationId": "admin_jobs_retrieve",
+        "operationId": "adminJobs",
         "tags": [
           "Admin"
         ],
@@ -16106,7 +16106,7 @@
     },
     "/api/v1/admin/privacy/requests": {
       "get": {
-        "operationId": "admin_privacy_requests_retrieve",
+        "operationId": "adminPrivacyRequests",
         "tags": [
           "Admin"
         ],
@@ -16363,7 +16363,7 @@
     },
     "/api/v1/admin/privacy/requests/{request_id}": {
       "get": {
-        "operationId": "admin_privacy_requests_retrieve_2",
+        "operationId": "adminPrivacyDetail",
         "tags": [
           "Admin"
         ],
@@ -16628,7 +16628,7 @@
     },
     "/api/v1/admin/audit": {
       "get": {
-        "operationId": "admin_audit_retrieve",
+        "operationId": "adminAudit",
         "tags": [
           "Admin"
         ],
@@ -16887,7 +16887,7 @@
     },
     "/api/v1/admin/staff": {
       "get": {
-        "operationId": "admin_staff_retrieve",
+        "operationId": "adminStaff",
         "tags": [
           "Admin"
         ],
@@ -17106,7 +17106,7 @@
     },
     "/api/v1/admin/roles": {
       "get": {
-        "operationId": "admin_roles_list",
+        "operationId": "adminRoles",
         "tags": [
           "Admin"
         ],
@@ -17289,7 +17289,7 @@
     },
     "/api/v1/admin/users/{user_id}/work": {
       "get": {
-        "operationId": "admin_users_work_retrieve",
+        "operationId": "adminUserWork",
         "tags": [
           "Admin"
         ],
@@ -17532,7 +17532,7 @@
     },
     "/api/v1/admin/work/{work_id}": {
       "get": {
-        "operationId": "admin_work_retrieve",
+        "operationId": "adminWorkDetail",
         "tags": [
           "Admin"
         ],

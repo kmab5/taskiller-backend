@@ -246,7 +246,7 @@ def job_projection(row):
 
 def job_types(include_privacy=False):
     types = ["auth_email", "retention"]
-    return types + ["data_export", "account_delete"] if include_privacy else types
+    return [*types, "data_export", "account_delete"] if include_privacy else types
 
 
 def jobs(filters, scope, *, include_privacy=False, retry=False):
