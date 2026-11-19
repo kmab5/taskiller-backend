@@ -188,7 +188,7 @@ def notes_index():
     }
     omitted = {"README.md", "PRODUCT.md", "DESIGN.md"}
     records = []
-    for path in sorted(DOCS.rglob("*.md")):
+    for path in sorted(DOCS.rglob("*.md"), key=lambda item: item.relative_to(DOCS).as_posix()):
         relative = path.relative_to(DOCS).as_posix()
         if path.name in omitted or relative.startswith("superpowers/"):
             continue
