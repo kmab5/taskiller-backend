@@ -4,13 +4,14 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularSwaggerView
 
-from taskiller.django_project import contract_views, health
+from taskiller.django_project import contract_views, health, root_views
 
 admin.site.site_header = "Taskiller Administration"
 admin.site.site_title = "Taskiller Admin"
 admin.site.index_title = "Read-only migration bridge"
 
 urlpatterns = [
+    path("", root_views.frontend_redirect, name="frontend-home"),
     path("", include("taskiller.django_api.urls")),
     path("openapi.json", contract_views.canonical_openapi, name="canonical-openapi"),
     path("docs", SpectacularSwaggerView.as_view(url_name="canonical-openapi"), name="docs"),
