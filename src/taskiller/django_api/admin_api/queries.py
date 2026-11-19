@@ -61,6 +61,8 @@ def decode_cursor(value):
             raise ValueError
         UUID(data["id"])
         for key in ("at", "start", "end"):
+            if key == "start" and data[key] is None:
+                continue
             if datetime.fromisoformat(data[key]).utcoffset() is None:
                 raise ValueError
         return data
@@ -74,7 +76,10 @@ def fingerprint(filters):
 
 
 def bounded(qs, filters, field="created_at"):
-    return qs.filter(**{f"{field}__gte": filters["start"], f"{field}__lt": filters["end"]})
+    bounds = {f"{field}__lt": filters["end"]}
+    if filters.get("start") is not None:
+        bounds[f"{field}__gte"] = filters["start"]
+    return qs.filter(**bounds)
 
 
 def page(qs, filters, scope, project, field="created_at"):
@@ -95,7 +100,7 @@ def page(qs, filters, scope, project, field="created_at"):
             {
                 "scope": scope,
                 "filters": digest,
-                "start": filters["start"].isoformat(),
+                "start": filters["start"].isoformat() if filters.get("start") else None,
                 "end": filters["end"].isoformat(),
                 "at": getattr(last, field).astimezone(UTC).isoformat(),
                 "id": str(last.id),

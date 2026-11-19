@@ -30,11 +30,36 @@ class ReadFiltersSerializer(StrictSerializer):
 
 
 class UserFiltersSerializer(ReadFiltersSerializer):
+    start = serializers.DateTimeField(
+        required=False,
+        default_timezone=UTC,
+        help_text=(
+            "Optional inclusive registration timestamp. "
+            "Omit to include accounts of any age; no 90-day limit."
+        ),
+    )
+    end = serializers.DateTimeField(
+        required=False,
+        default_timezone=UTC,
+        help_text=(
+            "Optional exclusive registration timestamp; "
+            "defaults to request time and is preserved by the cursor."
+        ),
+    )
     query = serializers.CharField(required=False, min_length=3, max_length=200)
     lifecycle = serializers.ChoiceField(
         choices=["active", "suspended", "pending_deletion", "inactive"], required=False
     )
     verified = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        # Account discovery must include older registrations, unlike activity reports.
+        now = datetime.now(UTC)
+        end = attrs.setdefault("end", now)
+        start = attrs.get("start")
+        if end > now or (start is not None and start >= end):
+            raise serializers.ValidationError("Use a past UTC range with start before end.")
+        return attrs
 
 
 class JobFiltersSerializer(ReadFiltersSerializer):

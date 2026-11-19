@@ -32,7 +32,8 @@ def filters(request, serializer=s.ReadFiltersSerializer, *, body=False):
         if not isinstance(data["cursor"], str) or len(data["cursor"]) > 2048:
             raise ValidationError({"cursor": "Invalid cursor."})
         cursor = q.decode_cursor(data["cursor"])
-        data.setdefault("start", cursor["start"])
+        if cursor["start"] is not None:
+            data.setdefault("start", cursor["start"])
         data.setdefault("end", cursor["end"])
     parsed = serializer(data=data)
     parsed.is_valid(raise_exception=True)

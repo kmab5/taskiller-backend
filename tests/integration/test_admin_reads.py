@@ -12,6 +12,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIRequestFactory
 
 from taskiller.django_api.admin_api import queries as q
+from taskiller.django_api.admin_api import read_serializers as s
 from taskiller.django_api.admin_api import read_views as v
 from taskiller.django_api.admin_api.authentication import new_session
 from taskiller.django_api.admin_api.permissions import ensure_roles
@@ -84,6 +85,33 @@ def test_keyset_ties_are_stable_and_cursors_are_scoped(window):
         q.users({**values, "cursor": first["nextCursor"]}, "staff-b:users")
     with pytest.raises(ValidationError):
         q.users({**values, "cursor": first["nextCursor"], "verified": True}, "staff-a:users")
+
+
+def test_directory_search_and_pagination_include_accounts_older_than_90_days():
+    stamp = timezone.now() - timedelta(days=400)
+    rows = [product_user(stamp), product_user(stamp - timedelta(days=1))]
+    name = f"Historical-{uuid4()}"
+    m.TaskillerUser.objects.filter(pk__in=[row.pk for row in rows]).update(display_name=name)
+    serializer = s.UserFiltersSerializer(data={"query": name, "limit": 1})
+    assert serializer.is_valid(), serializer.errors
+    values = serializer.validated_data
+    first = q.users(values, "staff:users")
+    assert first["items"][0]["id"] == rows[0].id
+    request = type("Request", (), {"data": {"query": name, "cursor": first["nextCursor"]}})()
+    restored = v.filters(request, s.UserFiltersSerializer, body=True)
+    second = q.users(restored, "staff:users")
+    assert second["items"][0]["id"] == rows[1].id
+    assert second["nextCursor"] is None
+    restricted = s.UserFiltersSerializer(
+        data={"query": name, "start": timezone.now() - timedelta(days=30)}
+    )
+    assert restricted.is_valid(), restricted.errors
+    assert q.users(restricted.validated_data, "staff:users")["items"] == []
+    historical = s.UserFiltersSerializer(
+        data={"query": rows[0].email, "start": stamp - timedelta(days=1000)}
+    )
+    assert historical.is_valid(), historical.errors
+    assert q.users(historical.validated_data, "staff:users")["items"][0]["id"] == rows[0].id
 
 
 def test_job_scope_applies_before_pagination_and_omits_secrets(window):

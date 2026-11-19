@@ -4100,11 +4100,13 @@
           },
           "start": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Optional inclusive registration timestamp. Omit to include accounts of any age; no 90-day limit."
           },
           "end": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Optional exclusive registration timestamp; defaults to request time and is preserved by the cursor."
           },
           "query": {
             "type": "string",
@@ -14738,7 +14740,8 @@
             "required": false,
             "schema": {
               "type": "string",
-              "format": "date-time"
+              "format": "date-time",
+              "description": "Optional inclusive registration timestamp. Omit to include accounts of any age; no 90-day limit."
             }
           },
           {
@@ -14747,7 +14750,8 @@
             "required": false,
             "schema": {
               "type": "string",
-              "format": "date-time"
+              "format": "date-time",
+              "description": "Optional exclusive registration timestamp; defaults to request time and is preserved by the cursor."
             }
           },
           {

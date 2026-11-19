@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taskiller.django_project.settings")
@@ -49,6 +49,51 @@ def test_filters_bound_every_query_and_reject_unknown_or_repeated_values():
 def test_bad_cursor_is_a_validation_error(value):
     with pytest.raises(ValidationError):
         q.decode_cursor(value)
+
+
+@pytest.mark.parametrize("search", [False, True])
+def test_directory_has_no_implicit_registration_start(search):
+    data = {"query": "old@example.com"} if search else {}
+    serializer = s.UserFiltersSerializer(data=data)
+    assert serializer.is_valid(), serializer.errors
+    filters = serializer.validated_data
+    assert "start" not in filters
+    queryset = Mock()
+    queryset.filter.return_value = queryset
+    with patch.object(q, "users_queryset", return_value=queryset), patch.object(q, "page"):
+        q.users(filters, "actor:users")
+    assert queryset.filter.call_args_list[0].kwargs == {"created_at__lt": filters["end"]}
+
+
+def test_directory_allows_old_registration_ranges_but_other_reads_remain_bounded():
+    end = datetime.now(UTC) - timedelta(minutes=1)
+    data = {"start": end - timedelta(days=3650), "end": end}
+    directory = s.UserFiltersSerializer(data=data)
+    assert directory.is_valid(), directory.errors
+    bounded = s.ReadFiltersSerializer(data=data)
+    assert not bounded.is_valid()
+    for invalid in ({"start": end, "end": end}, {"end": end + timedelta(days=1)}):
+        assert not s.UserFiltersSerializer(data=invalid).is_valid()
+
+
+def test_all_time_directory_cursor_preserves_snapshot_and_rejects_filter_changes():
+    serializer = s.UserFiltersSerializer(data={"limit": 1})
+    assert serializer.is_valid()
+    filters = serializer.validated_data
+    old = datetime.now(UTC) - timedelta(days=400)
+    rows = [SimpleNamespace(id=uuid4(), created_at=old) for _ in range(2)]
+    queryset = Mock()
+    queryset.order_by.return_value = rows
+    result = q.page(queryset, filters, "actor:users", lambda row: str(row.id))
+    token = result["nextCursor"]
+    request = SimpleNamespace(query_params=QueryDict(f"cursor={token}&limit=1"))
+    restored = v.filters(request, s.UserFiltersSerializer)
+    assert restored["end"] == filters["end"]
+    assert "start" not in restored
+    assert q.fingerprint(restored) == q.fingerprint(filters)
+    assert q.decode_cursor(token)["start"] is None
+    with pytest.raises(ValidationError):
+        q.page(queryset, {**restored, "verified": True}, "actor:users", str)
 
 
 def test_cursor_restores_original_window_without_running_a_query():

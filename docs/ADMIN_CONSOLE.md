@@ -109,8 +109,14 @@ exact field names, response status codes, and typed schemas.
 | Privacy | `GET privacy/requests/{request_id}`; `POST users/{target_id}/privacy/export`, `users/{target_id}/privacy/deletion` |
 | Bulk | `POST bulk/preview`, `bulk/execute`; per-target eligibility/outcomes |
 
-Reads use UTC ranges of at most 90 days (default 30), a default page size of 25,
-and a maximum of 100. Cursors are opaque, expiring, and bound to the query/scope;
+Directory reads (`GET users` and `POST users/search`) include accounts of any age
+by default. Optional `start` (inclusive) and `end` (exclusive) filter registration
+timestamps in UTC, without a 90-day limit. Omit `start` for all historical accounts;
+`end` defaults to request time and is preserved across cursor pages. Frontends must
+not inject an automatic 30-day registration window into directory or search requests.
+Other dated reads use UTC ranges of at most 90 days (default 30).
+Reads use a default page size of 25 and a maximum of 100.
+Cursors are opaque, expiring, and bound to the query/scope;
 reset them when filters change. User search requires at least three characters and
 uses exact email or anchored display-name matching. Use `POST users/search` when
 the query may contain an email address. Search requires CSRF but does not mutate
