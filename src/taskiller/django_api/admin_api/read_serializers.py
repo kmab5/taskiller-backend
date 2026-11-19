@@ -11,7 +11,9 @@ class StrictSerializer(serializers.Serializer):
             raise serializers.ValidationError("Unknown or malformed filters.")
         if hasattr(data, "getlist") and any(len(data.getlist(k)) != 1 for k in data):
             raise serializers.ValidationError("Repeated filters are not allowed.")
-        return super().to_internal_value(data)
+        # Query parameters are filters, not HTML checkboxes: omitted booleans
+        # must stay omitted rather than becoming False in DRF's QueryDict path.
+        return super().to_internal_value({key: data[key] for key in data})
 
 
 class ReadFiltersSerializer(StrictSerializer):

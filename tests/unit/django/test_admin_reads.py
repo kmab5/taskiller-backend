@@ -65,6 +65,18 @@ def test_directory_has_no_implicit_registration_start(search):
     assert queryset.filter.call_args_list[0].kwargs == {"created_at__lt": filters["end"]}
 
 
+@pytest.mark.parametrize(
+    "query, expected", [("", None), ("verified=true", True), ("verified=false", False)]
+)
+def test_directory_get_does_not_invent_a_verification_filter(query, expected):
+    serializer = s.UserFiltersSerializer(data=QueryDict(query))
+    assert serializer.is_valid(), serializer.errors
+    if expected is None:
+        assert "verified" not in serializer.validated_data
+    else:
+        assert serializer.validated_data["verified"] is expected
+
+
 def test_directory_allows_old_registration_ranges_but_other_reads_remain_bounded():
     end = datetime.now(UTC) - timedelta(minutes=1)
     data = {"start": end - timedelta(days=3650), "end": end}
