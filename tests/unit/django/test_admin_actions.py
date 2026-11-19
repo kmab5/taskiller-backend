@@ -209,4 +209,4 @@ def test_command_views_use_write_rollout_gate_and_staff_authentication():
     for view in (CommandView, StaffRolesView, BulkPreviewView, BulkExecuteView):
         assert view.writes
         assert view.authentication_classes == (StaffAuthentication,)
-    assert StaffRolesView.http_method_names == ["patch", "options"]
+    assert tuple(StaffRolesView.http_method_names) == ("patch", "options")

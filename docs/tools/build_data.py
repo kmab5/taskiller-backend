@@ -288,16 +288,22 @@ def build():
             errors.append(f"Unknown walkthrough operation: {journey['operationId']}")
     if errors:
         raise SystemExit("Documentation coverage failed:\n" + "\n".join(errors))
-    inputs = [
-        ROOT / "openapi/current.json",
-        *sorted((ROOT / "src/taskiller").rglob("*.py")),
-        *sorted((DOCS / "content").glob("*.json")),
-    ]
-    digest = hashlib.sha256()
-    for path in inputs:
-        digest.update(path.relative_to(ROOT).as_posix().encode())
-        # Git may check out CRLF on Windows and LF on Linux; hash canonical text.
-        digest.update(path.read_text(encoding="utf-8").encode("utf-8"))
+    # Fingerprint the generated product material, not unrelated console source or
+    # platform-dependent checkout bytes. The freshness check still compares the
+    # entire catalog, including source links and every projected field.
+    fingerprint_payload = {
+        "contract": contract,
+        "entities": entities,
+        "relations": relations,
+        "operations": operations,
+        "guides": guides,
+        "fieldHelp": field_help,
+    }
+    digest = hashlib.sha256(
+        json.dumps(
+            fingerprint_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    )
     return {
         "meta": {
             "name": "Taskiller product backend field guide",
@@ -338,7 +344,16 @@ def main():
     for path, text in outputs.items():
         if args.check:
             if not path.exists() or path.read_text(encoding="utf-8") != text:
-                raise SystemExit(f"Stale documentation data: {path.relative_to(ROOT)}")
+                before = path.read_text(encoding="utf-8") if path.exists() else ""
+                first = next(
+                    (i for i, (a, b) in enumerate(zip(before, text, strict=False)) if a != b),
+                    min(len(before), len(text)),
+                )
+                raise SystemExit(
+                    f"Stale documentation data: {path.relative_to(ROOT)} at character {first}; "
+                    f"stored={before[max(0, first - 35) : first + 90]!r}; "
+                    f"generated={text[max(0, first - 35) : first + 90]!r}"
+                )
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8", newline="\n")
