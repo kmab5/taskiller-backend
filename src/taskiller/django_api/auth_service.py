@@ -146,6 +146,9 @@ class DjangoAuthService:
         issued: IssuedCredentials | None = None
 
         with transaction.atomic():
+            # Coordinate with suspension and deletion, which lock the user before
+            # revoking sessions. Never mint credentials using a stale active flag.
+            TaskillerUser.objects.select_for_update().filter(id=first.session.user_id).first()
             session = AuthSession.objects.select_for_update().filter(id=first.session_id).first()
             if session is None:
                 deferred_error = self._invalid_refresh()

@@ -205,3 +205,52 @@ LOGGING = {
         "django.server": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }
+
+
+# Staff console is isolated from product JWTs, refresh cookies and CORS.
+ADMIN_CONSOLE_ENABLED = os.getenv("TASKILLER_ADMIN_CONSOLE_ENABLED", "false").lower() == "true"
+ADMIN_CONSOLE_WRITES_ENABLED = (
+    os.getenv("TASKILLER_ADMIN_CONSOLE_WRITES_ENABLED", "false").lower() == "true"
+)
+ADMIN_CONSOLE_ORIGINS = _json_list("TASKILLER_ADMIN_CONSOLE_ORIGINS", [])
+ADMIN_CONSOLE_ENCRYPTION_KEYS = [
+    value.strip()
+    for value in os.getenv("TASKILLER_ADMIN_CONSOLE_ENCRYPTION_KEYS", "").split(",")
+    if value.strip()
+]
+ADMIN_CONSOLE_COOKIE_SECURE = (
+    os.getenv("TASKILLER_ADMIN_CONSOLE_COOKIE_SECURE", str(TASKILLER_ENV != "local")).lower()
+    == "true"
+)
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys([*CSRF_TRUSTED_ORIGINS, *ADMIN_CONSOLE_ORIGINS]))
+if ADMIN_CONSOLE_ENABLED and TASKILLER_ENV == "production" and not ADMIN_CONSOLE_COOKIE_SECURE:
+    raise ImproperlyConfigured("Production staff cookies must be Secure")
+if ADMIN_CONSOLE_ENABLED:
+    from cryptography.fernet import Fernet
+
+    if not ADMIN_CONSOLE_ORIGINS or not ADMIN_CONSOLE_ENCRYPTION_KEYS:
+        raise ImproperlyConfigured(
+            "Enabled staff console requires exact origins and encryption keys"
+        )
+    for _console_origin in ADMIN_CONSOLE_ORIGINS:
+        _parsed_origin = urlsplit(_console_origin)
+        if (
+            _parsed_origin.scheme
+            not in ({"https"} if TASKILLER_ENV == "production" else {"https", "http"})
+            or not _parsed_origin.netloc
+            or _parsed_origin.path
+            or _parsed_origin.query
+            or _parsed_origin.fragment
+            or _parsed_origin.username
+            or "*" in _console_origin
+        ):
+            raise ImproperlyConfigured(
+                "Staff console origins must be exact scheme://host[:port] values"
+            )
+    try:
+        for _console_key in ADMIN_CONSOLE_ENCRYPTION_KEYS:
+            Fernet(_console_key.encode())
+    except (ValueError, TypeError) as _key_error:
+        raise ImproperlyConfigured(
+            "Staff console encryption keys must be valid Fernet keys"
+        ) from _key_error

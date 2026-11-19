@@ -39,6 +39,8 @@ class TaskillerUser(ExistingTaskillerModel):
     id = models.UUIDField(primary_key=True)
     email = models.CharField(max_length=320)
     password_hash = models.TextField()
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspension_reason = models.TextField(default="", blank=True)
     display_name = models.CharField(max_length=200, null=True)
     email_verified_at = models.DateTimeField(null=True)
     password_changed_at = models.DateTimeField()
@@ -49,6 +51,9 @@ class TaskillerUser(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "users"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["-created_at", "-id"], name="tk_admin_users_cursor"),
+        ]
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(Lower("email"), name="tk_users_email_ci_unique"),
             models.CheckConstraint(condition=models.Q(version__gte=1), name="tk_users_version"),
@@ -110,7 +115,8 @@ class AuthSession(ExistingTaskillerModel):
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "auth_sessions"
         indexes: ClassVar[list[models.Index]] = [
-            models.Index(fields=["expires_at"], name="tk_auth_sessions_expiry")
+            models.Index(fields=["user", "-created_at", "-id"], name="tk_admin_devices_cursor"),
+            models.Index(fields=["expires_at"], name="tk_auth_sessions_expiry"),
         ]
 
 
@@ -491,6 +497,9 @@ class ExecutionSession(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "execution_sessions"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["state", "ended_at", "id"], name="tk_admin_completed_sessions"),
+        ]
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(
                 fields=["owner"],
@@ -531,6 +540,10 @@ class SessionEvent(ExistingTaskillerModel):
 
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "session_events"
+        indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["occurred_at", "owner"], name="tk_admin_activity_metrics"),
+            models.Index(fields=["owner", "-occurred_at", "-id"], name="tk_admin_activity_cursor"),
+        ]
         constraints: ClassVar[list[models.BaseConstraint]] = [
             models.UniqueConstraint(
                 fields=["session", "idempotency_key"],
@@ -624,6 +637,7 @@ class OutboxJob(ExistingTaskillerModel):
     class Meta(ExistingTaskillerModel.Meta):
         db_table = "outbox_jobs"
         indexes: ClassVar[list[models.Index]] = [
+            models.Index(fields=["job_type", "-created_at", "-id"], name="tk_admin_jobs_cursor"),
             models.Index(
                 fields=["available_at", "created_at"],
                 condition=models.Q(status="queued"),
@@ -663,3 +677,14 @@ class SecurityEvent(ExistingTaskillerModel):
         indexes: ClassVar[list[models.Index]] = [
             models.Index(fields=["created_at"], name="tk_security_retention")
         ]
+
+
+# Import after the product models so Django discovers the dedicated staff models.
+from taskiller.django_domain.staff_models import (  # noqa: E402, F401
+    AdminAuditRecord,
+    AdminCommandReceipt,
+    StaffChallenge,
+    StaffEnrollment,
+    StaffRecoveryCode,
+    StaffSession,
+)

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.db import models
 
 from taskiller.django_domain import models as domain
 
 
 class ReadOnlyTaskillerAdmin(admin.ModelAdmin):
-    """Operational visibility without allowing Django to mutate Alembic-owned rows."""
+    """Allowlisted operational metadata without credentials or private payloads."""
 
     show_full_result_count = False
     list_per_page = 50
@@ -38,11 +40,22 @@ class ReadOnlyTaskillerAdmin(admin.ModelAdmin):
         obj: models.Model | None = None,
     ) -> tuple[str, ...]:
         del request, obj
-        return tuple(field.name for field in self.model._meta.fields)
+        return self.fields or ()
 
 
 @admin.register(domain.TaskillerUser)
 class TaskillerUserAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "email",
+        "display_name",
+        "is_active",
+        "email_verified_at",
+        "suspended_at",
+        "version",
+        "created_at",
+        "updated_at",
+    )
     list_display = (
         "email",
         "display_name",
@@ -57,6 +70,14 @@ class TaskillerUserAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.UserPreferences)
 class UserPreferencesAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "user",
+        "timezone",
+        "locale",
+        "preferred_strategy",
+        "show_review_prompt",
+        "version",
+    )
     list_display = (
         "user",
         "timezone",
@@ -69,6 +90,16 @@ class UserPreferencesAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.AuthSession)
 class AuthSessionAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "user",
+        "device_name",
+        "created_at",
+        "last_used_at",
+        "expires_at",
+        "revoked_at",
+        "revocation_reason",
+    )
     list_display = (
         "id",
         "user",
@@ -84,62 +115,102 @@ class AuthSessionAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.WorkType)
 class WorkTypeAdmin(ReadOnlyTaskillerAdmin):
-    list_display = ("display_name", "slug", "is_system", "owner", "version")
+    fields = (
+        "id",
+        "slug",
+        "is_system",
+        "owner",
+        "version",
+        "created_at",
+        "updated_at",
+    )
+    list_display = ("id", "slug", "is_system", "owner", "version")
     list_filter = ("is_system", "cognitive_demand", "physicality", "learning_mode")
-    search_fields = ("display_name", "slug", "owner__email")
+    search_fields = ("slug", "owner__email")
 
 
 @admin.register(domain.WorkItem)
 class WorkItemAdmin(ReadOnlyTaskillerAdmin):
-    list_display = (
-        "name",
+    fields = (
+        "id",
         "kind",
         "status",
         "owner",
-        "work_type",
+        "priority",
+        "version",
+        "created_at",
+        "updated_at",
+    )
+    list_display = (
+        "id",
+        "kind",
+        "status",
+        "owner",
         "priority",
         "created_at",
     )
-    list_filter = ("kind", "status", "work_type")
-    search_fields = ("name", "owner__email")
+    list_filter = ("kind", "status")
+    search_fields = ("owner__email",)
     ordering = ("-created_at",)
 
 
 @admin.register(domain.FocusPlanRecommendation)
 class FocusPlanRecommendationAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "owner",
+        "strategy",
+        "provenance",
+        "engine_version",
+        "created_at",
+    )
     list_display = (
         "id",
-        "work_item",
         "strategy",
         "provenance",
         "engine_version",
         "created_at",
     )
     list_filter = ("strategy", "provenance", "engine_version")
-    search_fields = ("work_item__name", "owner__email")
+    search_fields = ("owner__email",)
     ordering = ("-created_at",)
 
 
 @admin.register(domain.FocusPlan)
 class FocusPlanAdmin(ReadOnlyTaskillerAdmin):
-    list_display = (
-        "name",
+    fields = (
+        "id",
+        "owner",
         "source",
         "is_template",
-        "work_item",
+        "version",
+        "created_at",
+        "updated_at",
+    )
+    list_display = (
+        "id",
+        "source",
+        "is_template",
         "owner",
         "version",
         "created_at",
     )
     list_filter = ("source", "is_template")
-    search_fields = ("name", "work_item__name", "owner__email")
+    search_fields = ("owner__email",)
     ordering = ("-created_at",)
 
 
 @admin.register(domain.FocusPlanSegment)
 class FocusPlanSegmentAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "segment_index",
+        "kind",
+        "duration_mode",
+        "target_seconds",
+        "optional",
+    )
     list_display = (
-        "focus_plan",
         "segment_index",
         "kind",
         "duration_mode",
@@ -147,14 +218,21 @@ class FocusPlanSegmentAdmin(ReadOnlyTaskillerAdmin):
         "optional",
     )
     list_filter = ("kind", "duration_mode", "optional")
-    search_fields = ("focus_plan__name", "label")
+    search_fields = ("id",)
 
 
 @admin.register(domain.ExecutionSession)
 class ExecutionSessionAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "owner",
+        "state",
+        "current_segment_index",
+        "session_started_at",
+        "ended_at",
+    )
     list_display = (
         "id",
-        "work_item",
         "state",
         "owner",
         "current_segment_index",
@@ -162,13 +240,20 @@ class ExecutionSessionAdmin(ReadOnlyTaskillerAdmin):
         "ended_at",
     )
     list_filter = ("state",)
-    search_fields = ("work_item__name", "owner__email")
+    search_fields = ("owner__email",)
     ordering = ("-session_started_at",)
 
 
 @admin.register(domain.SessionEvent)
 class SessionEventAdmin(ReadOnlyTaskillerAdmin):
-    list_display = ("type", "session", "occurred_at", "segment_index", "owner")
+    fields = (
+        "id",
+        "type",
+        "occurred_at",
+        "segment_index",
+        "owner",
+    )
+    list_display = ("type", "id", "occurred_at", "segment_index", "owner")
     list_filter = ("type",)
     search_fields = ("session__id", "owner__email")
     ordering = ("-occurred_at",)
@@ -176,8 +261,16 @@ class SessionEventAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.SessionReview)
 class SessionReviewAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "owner",
+        "focus_score",
+        "fatigue_score",
+        "difficulty_score",
+        "satisfaction_score",
+        "created_at",
+    )
     list_display = (
-        "session",
         "owner",
         "focus_score",
         "fatigue_score",
@@ -191,6 +284,14 @@ class SessionReviewAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.DataExportRequest)
 class DataExportRequestAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "user",
+        "status",
+        "created_at",
+        "completed_at",
+        "expires_at",
+    )
     list_display = (
         "id",
         "user",
@@ -206,6 +307,13 @@ class DataExportRequestAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.AccountDeletionRequest)
 class AccountDeletionRequestAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "user_id",
+        "status",
+        "requested_at",
+        "execute_after",
+    )
     list_display = ("id", "user_id", "status", "requested_at", "execute_after")
     list_filter = ("status",)
     search_fields = ("user_id",)
@@ -214,6 +322,16 @@ class AccountDeletionRequestAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.OutboxJob)
 class OutboxJobAdmin(ReadOnlyTaskillerAdmin):
+    fields = (
+        "id",
+        "job_type",
+        "status",
+        "attempts",
+        "available_at",
+        "completed_at",
+        "created_at",
+        "updated_at",
+    )
     list_display = (
         "id",
         "job_type",
@@ -228,9 +346,15 @@ class OutboxJobAdmin(ReadOnlyTaskillerAdmin):
 
 @admin.register(domain.SecurityEvent)
 class SecurityEventAdmin(ReadOnlyTaskillerAdmin):
-    list_display = ("event_type", "user_id", "created_at", "subject_hash")
+    fields = (
+        "id",
+        "event_type",
+        "user_id",
+        "created_at",
+    )
+    list_display = ("event_type", "user_id", "created_at")
     list_filter = ("event_type",)
-    search_fields = ("user_id", "subject_hash")
+    search_fields = ("user_id",)
     ordering = ("-created_at",)
 
 
@@ -238,3 +362,18 @@ class SecurityEventAdmin(ReadOnlyTaskillerAdmin):
 # - RefreshToken / verification / reset token tables (credential material)
 # - IdempotencyRecord / RateLimitBucket (Django Admin doesn't support
 #   CompositePrimaryKey models in Django 5.2)
+
+
+# The console owns staff authorization; the diagnostic admin must not expose
+# password hashes or bypass the audited Owner/last-Owner workflows via auth forms.
+for authentication_model in (get_user_model(), Group):
+    if admin.site.is_registered(authentication_model):
+        admin.site.unregister(authentication_model)
+
+
+# Django's object headings and breadcrumbs call __str__ even with safe fields.
+# These models expose private work names there; inspect them through audited
+# console projections instead of the diagnostic site.
+for private_content_model in (domain.WorkType, domain.WorkItem, domain.FocusPlan):
+    if admin.site.is_registered(private_content_model):
+        admin.site.unregister(private_content_model)

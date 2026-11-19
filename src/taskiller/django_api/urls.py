@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from taskiller.django_api import (
     analytics_views,
@@ -10,6 +10,7 @@ from taskiller.django_api import (
 )
 
 urlpatterns = [
+    path("api/v1/admin/", include("taskiller.django_api.admin_api.urls")),
     path("api/v1/auth/register", views.RegisterView.as_view()),
     path("api/v1/auth/login", views.LoginView.as_view()),
     path("api/v1/auth/refresh", views.RefreshView.as_view()),

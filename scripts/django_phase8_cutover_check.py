@@ -36,6 +36,13 @@ PUBLIC = {
     "confirmPasswordReset",
     "downloadDataExport",
 }
+ADMIN_PUBLIC_PATHS = {
+    "/api/v1/admin/auth/csrf",
+    "/api/v1/admin/auth/login",
+    "/api/v1/admin/auth/mfa",
+    "/api/v1/admin/auth/enroll",
+    "/api/v1/admin/auth/enroll/confirm",
+}
 
 
 def _ops(schema: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -81,6 +88,18 @@ def main() -> None:
         if actual.get("operationId") != expected.get("operationId"):
             errors.append(f"operationId mismatch: {key}")
         operation_id = expected.get("operationId")
+        if key[0].startswith("/api/v1/admin/"):
+            # Staff-cookie authentication is independent of product bearer authentication.
+            expected_security = expected.get("security") or []
+            actual_security = actual.get("security") or []
+            required_security = [] if key[0] in ADMIN_PUBLIC_PATHS else [{"staffCookie": []}]
+            if expected_security != required_security:
+                errors.append(f"canonical staff security policy mismatch: {key}")
+            if actual_security != expected_security:
+                errors.append(f"staff security mismatch: {key}")
+            if _secured(actual):
+                errors.append(f"console operation accepts product bearer auth: {key}")
+            continue
         should_secure = operation_id not in PUBLIC
         if _secured(actual) != should_secure:
             errors.append(f"security mismatch: {key}")

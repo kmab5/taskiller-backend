@@ -79,6 +79,11 @@ jobs:
       - name: Cutover contract
         run: PYTHONPATH=src uv run python scripts/django_phase8_cutover_check.py
 
+      - name: Static admin contract freshness
+        run: |
+          uv run python scripts/build_admin_contract.py --check
+          uv run python docs/tools/build_data.py --check
+
       - name: Baseline audit
         run: PYTHONPATH=src uv run python scripts/django_phase9_baseline_audit.py
 

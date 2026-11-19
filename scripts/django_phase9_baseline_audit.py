@@ -57,6 +57,12 @@ def main() -> None:
             "focus_plans",
             "execution_sessions",
             "outbox_jobs",
+            "staff_enrollments",
+            "staff_challenges",
+            "staff_sessions",
+            "staff_recovery_codes",
+            "admin_audit_records",
+            "admin_command_receipts",
         }
         missing = sorted(required - tables)
         if missing:
@@ -98,6 +104,9 @@ def main() -> None:
             errors.append("missing database trigger: tk_session_event_history")
         if "tk_security_event_history" not in actual_triggers:
             errors.append("missing database trigger: tk_security_event_history")
+        for name in ("tk_admin_audit_history", "tk_admin_audit_no_truncate"):
+            if name not in actual_triggers:
+                errors.append(f"missing database trigger: {name}")
 
     if errors:
         raise SystemExit("\n".join(f"- {error}" for error in errors))

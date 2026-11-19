@@ -9,6 +9,8 @@
       "id": "Stable identifier used to refer to this person across requests and related records.",
       "email": "Sign-in and recovery address; addresses are unique regardless of letter case.",
       "password_hash": "One-way password verifier used to check sign-ins; never the raw password.",
+      "suspended_at": "UTC time an operator suspended this account; empty when not suspended. Suspension blocks sign-in and refresh and revokes product sessions without stopping running Execution Sessions.",
+      "suspension_reason": "Operator reason for suspension, retained for account lifecycle management and excluded from general API projections. This is separate from pending deletion.",
       "display_name": "Optional name shown in the profile; empty when no name was supplied.",
       "email_verified_at": "When ownership of the email address was confirmed; empty before verification.",
       "password_changed_at": "When the password was last set, recording the latest credential change.",

@@ -16,6 +16,14 @@ ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
 MODELS = ROOT / "src/taskiller/django_domain/models.py"
 METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
+ADMIN_MODELS = {
+    "StaffEnrollment",
+    "StaffChallenge",
+    "StaffSession",
+    "StaffRecoveryCode",
+    "AdminAuditRecord",
+    "AdminCommandReceipt",
+}
 TYPES = {
     "UUIDField": "UUID",
     "CharField": "text",
@@ -50,6 +58,8 @@ def extract_entities(editorial):
     errors = []
     for node in tree.body:
         if not isinstance(node, ast.ClassDef):
+            continue
+        if node.name in ADMIN_MODELS:
             continue
         meta = next(
             (item for item in node.body if isinstance(item, ast.ClassDef) and item.name == "Meta"),
@@ -174,6 +184,7 @@ def notes_index():
         "OBSERVABILITY",
         "DJANGO_PHASE10",
         "DJANGO_TYPECHECK_GAP",
+        "ADMIN_CONSOLE",
     }
     omitted = {"README.md", "PRODUCT.md", "DESIGN.md"}
     records = []
@@ -199,6 +210,18 @@ def notes_index():
 
 def build():
     contract = json.loads((ROOT / "openapi/current.json").read_text(encoding="utf-8"))
+    # This is the product field guide. Console workflows have a separate reference.
+    contract["paths"] = {
+        path: item
+        for path, item in contract["paths"].items()
+        if not path.startswith("/api/v1/admin/")
+    }
+    contract["components"]["schemas"] = {
+        name: schema
+        for name, schema in contract["components"]["schemas"].items()
+        if not name.startswith("Admin")
+    }
+    contract["components"].get("securitySchemes", {}).pop("staffCookie", None)
     descriptions = load_content("endpoints")
     entity_text = load_content("entities")
     guides = load_content("guides")
@@ -276,7 +299,9 @@ def build():
         digest.update(path.read_bytes())
     return {
         "meta": {
-            "name": "Taskiller backend field guide",
+            "name": "Taskiller product backend field guide",
+            "scope": "Product API and product data only; console operations are excluded.",
+            "adminReference": "ADMIN_CONSOLE.md",
             "version": contract["info"]["version"],
             "fingerprint": digest.hexdigest()[:16],
             "apiOperations": len(operations),
